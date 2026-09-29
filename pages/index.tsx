@@ -261,7 +261,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
             </div>
 
             {/* Right Action Controls Island */}
-            <div className="flex items-center gap-1.5 sm:gap-2 rounded-2xl border border-zinc-200/80 bg-white/70 p-1 sm:p-1.5 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60 dark:shadow-none shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 rounded-xl border border-zinc-200/80 bg-white/70 p-1 sm:p-1.5 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60 dark:shadow-none shrink-0">
               <ThemeToggle />
 
               {user ? (
