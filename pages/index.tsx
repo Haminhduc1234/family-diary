@@ -9,6 +9,7 @@ import {
   ArrowUpTrayIcon,
   CalendarDaysIcon,
   FilmIcon,
+  GlobeAltIcon,
   LockClosedIcon,
   PencilSquareIcon,
   TrashIcon,
@@ -217,7 +218,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
 
         {/* Simple & Minimalist Header */}
         <header className="mb-8 sm:mb-12 border-b border-white/10 pb-6 sm:pb-8">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
                 Family Diary
@@ -228,10 +229,10 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
             </div>
 
             {user ? (
-              <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+              <div className="flex flex-wrap items-center justify-end gap-2.5">
                 <div className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-emerald-400 font-medium">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="truncate max-w-[150px] sm:max-w-[200px]">{user.email}</span>
+                  <span className="truncate max-w-[120px] sm:max-w-[200px]">{user.email}</span>
                 </div>
                 <button
                   onClick={handleLogout}
@@ -244,10 +245,11 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
             ) : (
               <button
                 onClick={() => setIsLoginOpen(true)}
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-white/30 hover:bg-white/10 hover:text-white self-start sm:self-auto"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-zinc-400 transition hover:border-white/30 hover:bg-white/10 hover:text-white"
+                title="Admin Login"
+                aria-label="Admin Login"
               >
-                <LockClosedIcon className="h-3.5 w-3.5" />
-                <span>Admin Login</span>
+                <GlobeAltIcon className="h-5 w-5" />
               </button>
             )}
           </div>

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <linearGradient id="heart" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fb7185" />
+      <stop offset="100%" stop-color="#f43f5e" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded squircle -->
+  <rect width="128" height="128" rx="28" fill="url(#bg)" />
+
+  <!-- Subtle inner border -->
+  <rect x="2" y="2" width="124" height="124" rx="26" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" />
+
+  <!-- Heart floating above -->
+  <path d="M64 19 C60 13 52.5 13 48.5 18.5 C43 26 53.5 35 64 42 C74.5 35 85 26 79.5 18.5 C75.5 13 68 13 64 19 Z" fill="url(#heart)" filter="url(#shadow)" />
+
+  <!-- Left Parent (Father / Mother) -->
+  <circle cx="36" cy="46" r="11" fill="#ffffff" filter="url(#shadow)" />
+  <path d="M19 98 C19 78 28 69 42 69 C48 69 53 73 55 77 C48 82 45 89 45 98 Z" fill="#ffffff" />
+
+  <!-- Right Parent (Mother / Father) -->
+  <circle cx="92" cy="46" r="11" fill="#ffffff" filter="url(#shadow)" />
+  <path d="M109 98 C109 78 100 69 86 69 C80 69 75 73 73 77 C80 82 83 89 83 98 Z" fill="#ffffff" />
+
+  <!-- Center Child -->
+  <circle cx="64" cy="62" r="8.5" fill="#ffffff" filter="url(#shadow)" />
+  <path d="M50 98 C50 85 55 79 64 79 C73 79 78 85 78 98 Z" fill="#ffffff" />
+</svg>
