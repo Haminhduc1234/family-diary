@@ -100,10 +100,11 @@ export default function SharedModal({
                 ) : (
                   <Image
                     src={currentImage.url}
-                    width={navigation ? 1280 : 1920}
-                    height={navigation ? 853 : 1280}
+                    width={currentImage.width || (navigation ? 1280 : 1920)}
+                    height={currentImage.height || (navigation ? 853 : 1280)}
                     priority
                     alt={currentImage.title || "Family Diary media"}
+                    className="max-h-[75vh] w-auto max-w-full object-contain"
                     onLoad={() => setLoaded(true)}
                   />
                 )}

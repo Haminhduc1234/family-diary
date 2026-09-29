@@ -205,7 +205,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
         <meta property="og:title" content="Family Diary" />
       </Head>
 
-      <main className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto min-h-screen max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         {photoId && (
           <Modal
             images={mediaList}
@@ -217,39 +217,73 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
           />
         )}
 
-        {/* Simple & Minimalist Header */}
-        <header className="mb-8 sm:mb-12 border-b border-zinc-200/80 pb-6 sm:pb-8 dark:border-white/10">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-                Family Diary
-              </h1>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                A visual timeline of memories
-              </p>
+        {/* Enhanced Modern Header */}
+        <header className="relative mb-6 sm:mb-10 pb-6 sm:pb-8">
+          {/* Subtle Ambient Glows */}
+          <div className="pointer-events-none absolute -top-10 left-8 -z-10 h-32 w-64 rounded-full bg-blue-500/10 blur-3xl dark:bg-blue-600/15" />
+          <div className="pointer-events-none absolute -top-10 right-8 -z-10 h-32 w-64 rounded-full bg-indigo-500/10 blur-3xl dark:bg-indigo-600/15" />
+
+          <div className="flex items-center justify-between gap-3 sm:gap-4">
+            {/* Brand Logo & Title */}
+            <div className="flex items-center gap-2.5 sm:gap-4 shrink-0 min-w-0">
+              <div className="relative flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-sky-400 p-[1.5px] shadow-lg shadow-blue-500/20 group">
+                <div className="flex h-full w-full items-center justify-center rounded-[14px] bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl transition-all duration-300 group-hover:bg-transparent">
+                  <svg
+                    className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400 group-hover:text-white transition-colors duration-300"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                  </svg>
+                </div>
+              </div>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight whitespace-nowrap bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-100 dark:to-zinc-300 bg-clip-text text-transparent">
+                    Family Diary
+                  </h1>
+                  {mediaList.length > 0 && (
+                    <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                      <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                      <span>{mediaList.length} moments</span>
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-normal whitespace-nowrap truncate max-w-[140px] sm:max-w-none">
+                  A visual timeline of precious memories
+                </p>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* Right Action Controls Island */}
+            <div className="flex items-center gap-1.5 sm:gap-2 rounded-2xl border border-zinc-200/80 bg-white/70 p-1 sm:p-1.5 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60 dark:shadow-none shrink-0">
               <ThemeToggle />
 
               {user ? (
-                <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-2.5">
-                  <div className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-emerald-600 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-emerald-400 dark:shadow-none">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="truncate max-w-[110px] sm:max-w-[200px]">{user.email}</span>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <div className="flex items-center gap-1.5 rounded-lg border border-zinc-200/80 bg-zinc-50 px-2 sm:px-2.5 py-1 text-xs font-medium text-emerald-600 dark:border-white/10 dark:bg-white/5 dark:text-emerald-400">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span className="hidden sm:inline truncate max-w-[120px] md:max-w-[160px]">{user.email}</span>
+                    <span className="sm:hidden font-semibold text-[11px]">Admin</span>
                   </div>
                   <button
                     onClick={handleLogout}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-900 dark:border-white/15 dark:bg-white/5 dark:text-zinc-300 dark:shadow-none dark:hover:border-white/30 dark:hover:bg-white/10 dark:hover:text-white"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200/80 bg-white text-zinc-600 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-95 dark:border-white/10 dark:bg-white/5 dark:text-zinc-400 dark:shadow-none dark:hover:border-red-500/30 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                    title="Log out"
+                    aria-label="Log out"
                   >
-                    <ArrowRightOnRectangleIcon className="h-3.5 w-3.5" />
-                    <span>Log out</span>
+                    <ArrowRightOnRectangleIcon className="h-4 w-4" />
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setIsLoginOpen(true)}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-100 hover:text-zinc-900 dark:border-white/15 dark:bg-white/5 dark:text-zinc-400 dark:shadow-none dark:hover:border-white/30 dark:hover:bg-white/10 dark:hover:text-white"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200/80 bg-white text-zinc-600 shadow-sm transition-all duration-200 hover:border-zinc-300 hover:bg-zinc-100 hover:text-zinc-900 active:scale-95 dark:border-white/10 dark:bg-white/5 dark:text-zinc-400 dark:shadow-none dark:hover:border-white/20 dark:hover:bg-white/10 dark:hover:text-white"
                   title="Admin Login"
                   aria-label="Admin Login"
                 >
@@ -258,6 +292,10 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
               )}
             </div>
           </div>
+
+          {/* Bottom Divider with Gradient Accent */}
+          <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-zinc-200 dark:via-white/10 to-transparent" />
+          <div className="absolute -bottom-px left-1/4 h-[2px] w-28 sm:w-40 bg-gradient-to-r from-transparent via-blue-500/60 to-transparent blur-[0.5px]" />
         </header>
 
         {/* Timeline Container */}
@@ -266,13 +304,13 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
             {timelineGroups.map((group) => (
               <section key={group.dateKey} className="relative">
                 {/* Timeline node icon */}
-                <div className="absolute -left-[45px] sm:-left-[45px] top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-blue-400/40 bg-white shadow-md shadow-blue-500/10 dark:bg-zinc-900 dark:shadow-blue-500/20">
+                <div className="absolute -left-[37px] sm:-left-[45px] top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-blue-400/40 bg-white shadow-md shadow-blue-500/10 dark:bg-zinc-900 dark:shadow-blue-500/20">
                   <div className="h-2 w-2 rounded-full bg-blue-500" />
                 </div>
 
                 {/* Date milestone label */}
                 <div className="mb-5 flex flex-wrap items-center gap-2.5">
-                  <span className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white/90 px-3 py-1 text-xs font-semibold text-zinc-800 shadow-sm backdrop-blur-md dark:border-white/15 dark:bg-white/10 dark:text-white dark:shadow-none">
+                  <span className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white/90 px-3 py-1 text-xs font-semibold text-zinc-800 shadow-sm backdrop-blur-md dark:border-transparent dark:bg-white/10 dark:text-white dark:shadow-none">
                     <CalendarDaysIcon className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
                     <span>{group.displayDate}</span>
                   </span>

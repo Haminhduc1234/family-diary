@@ -109,14 +109,19 @@ async function describeImage(
     }
 
     const meta = await sharp(buf).metadata();
+    const isRotated = meta.orientation && [5, 6, 7, 8].includes(meta.orientation);
+    const resolvedWidth = isRotated ? (meta.height ?? 720) : (meta.width ?? 720);
+    const resolvedHeight = isRotated ? (meta.width ?? 480) : (meta.height ?? 480);
+
     const placeholder = await sharp(buf)
+      .rotate()
       .resize(10)
       .jpeg({ quality: 70 })
       .toBuffer();
 
     return {
-      width: meta.width ?? 720,
-      height: meta.height ?? 480,
+      width: resolvedWidth,
+      height: resolvedHeight,
       blurDataUrl: `data:image/jpeg;base64,${placeholder.toString("base64")}`,
     };
   } catch (err) {
@@ -164,15 +169,23 @@ export default async function getResults(forceRefresh: boolean = false): Promise
             const dateObj = row.created_at ? new Date(row.created_at) : new Date();
 
             let blurDataUrl = row.blur_data_url;
-            let width = row.width || (isVideo ? 1280 : 720);
-            let height = row.height || (isVideo ? 720 : 480);
+            let width = row.width;
+            let height = row.height;
 
-            if (!isVideo && !blurDataUrl) {
-              const meta = await describeImage(row.storage_path, row.url, bucket);
-              width = meta.width;
-              height = meta.height;
-              blurDataUrl = meta.blurDataUrl;
-            } else if (isVideo) {
+            if (!isVideo) {
+              if (!width || !height || !blurDataUrl) {
+                const meta = await describeImage(row.storage_path, row.url, bucket);
+                if (!width || !height) {
+                  width = meta.width;
+                  height = meta.height;
+                }
+                if (!blurDataUrl) {
+                  blurDataUrl = meta.blurDataUrl;
+                }
+              }
+            } else {
+              width = width || 1280;
+              height = height || 720;
               blurDataUrl = VIDEO_BLUR_DATA_URL;
             }
 

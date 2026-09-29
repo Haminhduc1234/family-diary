@@ -4,7 +4,6 @@ import {
   CalendarDaysIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
-  FilmIcon,
   PhotoIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -18,7 +17,7 @@ interface UploadFileItem {
   file: File;
   title: string;
   previewUrl: string;
-  isVideo: boolean;
+  isVideo?: boolean;
   status: "idle" | "uploading" | "success" | "error";
   errorMessage?: string;
   progress: number;
@@ -55,26 +54,21 @@ export default function UploadModal({
 
   const addFiles = useCallback((files: FileList | File[]) => {
     const newItems: UploadFileItem[] = [];
-    const validExtensions = /\.(jpe?g|png|webp|avif|gif|mp4|webm|mov|m4v|ogg)$/i;
+    const validExtensions = /\.(jpe?g|png|webp|avif|gif)$/i;
 
     Array.from(files).forEach((file) => {
-      if (!validExtensions.test(file.name) && !file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+      if (!validExtensions.test(file.name) && !file.type.startsWith("image/")) {
         return;
       }
 
-      const isVideo = file.type.startsWith("video/") || /\.(mp4|webm|mov|m4v|ogg)$/i.test(file.name);
       const previewUrl = URL.createObjectURL(file);
-      const defaultTitle = file.name
-        .replace(/\.[^/.]+$/, "")
-        .replace(/[-_]/g, " ")
-        .trim();
 
       newItems.push({
         id: `${file.name}-${Date.now()}-${Math.random()}`,
         file,
         title: "",
         previewUrl,
-        isVideo,
+        isVideo: false,
         status: "idle",
         progress: 0,
       });
@@ -145,39 +139,22 @@ export default function UploadModal({
   };
 
   const getMediaDimensions = (
-    file: File,
-    isVideo: boolean
+    file: File
   ): Promise<{ width: number; height: number }> => {
     return new Promise((resolve) => {
       const url = URL.createObjectURL(file);
-      if (isVideo) {
-        const v = document.createElement("video");
-        v.preload = "metadata";
-        v.onloadedmetadata = () => {
-          const w = v.videoWidth || 1280;
-          const h = v.videoHeight || 720;
-          URL.revokeObjectURL(url);
-          resolve({ width: w, height: h });
-        };
-        v.onerror = () => {
-          URL.revokeObjectURL(url);
-          resolve({ width: 1280, height: 720 });
-        };
-        v.src = url;
-      } else {
-        const img = new window.Image();
-        img.onload = () => {
-          const w = img.naturalWidth || 1200;
-          const h = img.naturalHeight || 800;
-          URL.revokeObjectURL(url);
-          resolve({ width: w, height: h });
-        };
-        img.onerror = () => {
-          URL.revokeObjectURL(url);
-          resolve({ width: 1200, height: 800 });
-        };
-        img.src = url;
-      }
+      const img = new window.Image();
+      img.onload = () => {
+        const w = img.naturalWidth || 1200;
+        const h = img.naturalHeight || 800;
+        URL.revokeObjectURL(url);
+        resolve({ width: w, height: h });
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve({ width: 1200, height: 800 });
+      };
+      img.src = url;
     });
   };
 
@@ -223,7 +200,7 @@ export default function UploadModal({
           : `${timestamp}---${safeName}`;
 
         // Measure natural dimensions of the media file
-        const dims = await getMediaDimensions(file, item.isVideo);
+        const dims = await getMediaDimensions(file);
 
         let uploadSucceeded = false;
 
@@ -232,7 +209,7 @@ export default function UploadModal({
           const { error: storageError } = await supabase.storage
             .from(DEFAULT_BUCKET)
             .upload(uploadPath, file, {
-              contentType: file.type || "application/octet-stream",
+              contentType: file.type || "image/jpeg",
               upsert: true,
             });
 
@@ -248,7 +225,7 @@ export default function UploadModal({
                 title: userTitle,
                 storage_path: uploadPath,
                 url: urlData.publicUrl,
-                type: item.isVideo ? "video" : "image",
+                type: "image",
                 width: dims.width,
                 height: dims.height,
                 created_at: itemIso,
@@ -283,10 +260,10 @@ export default function UploadModal({
             body: JSON.stringify({
               filename: uploadPath,
               fileBase64: base64Data,
-              contentType: file.type,
+              contentType: file.type || "image/jpeg",
               bucket: DEFAULT_BUCKET,
               title: userTitle,
-              type: item.isVideo ? "video" : "image",
+              type: "image",
               width: dims.width,
               height: dims.height,
               createdAt: itemIso,
@@ -373,10 +350,10 @@ export default function UploadModal({
                 </div>
                 <div>
                   <Dialog.Title className="text-base font-semibold">
-                    Upload Media
+                    Upload Photos
                   </Dialog.Title>
                   <p className="text-xs text-white/50">
-                    Add photos or videos with titles to the timeline
+                    Add photos with titles to the timeline
                   </p>
                 </div>
               </div>
@@ -402,7 +379,7 @@ export default function UploadModal({
                       Timeline Date
                     </label>
                     <p className="text-[11px] text-zinc-400">
-                      Select milestone date for all files in this batch
+                      Select milestone date for all photos in this batch
                     </p>
                   </div>
                 </div>
@@ -431,7 +408,7 @@ export default function UploadModal({
                   ref={fileInputRef}
                   type="file"
                   multiple
-                  accept="image/*,video/mp4,video/webm,video/quicktime,video/*"
+                  accept="image/jpeg,image/png,image/webp,image/avif,image/gif,image/*"
                   onChange={handleFileChange}
                   className="hidden"
                 />
@@ -439,13 +416,13 @@ export default function UploadModal({
                   <ArrowUpTrayIcon className="h-7 w-7" />
                 </div>
                 <p className="text-sm font-medium text-white">
-                  Drag and drop media here, or{" "}
+                  Drag and drop photos here, or{" "}
                   <span className="text-blue-400 underline underline-offset-2">
-                    browse files
+                    browse photos
                   </span>
                 </p>
                 <p className="mt-1.5 text-xs text-white/50">
-                  Supports JPG, PNG, WEBP, GIF, MP4, WEBM, MOV
+                  Supports JPG, PNG, WEBP, AVIF, GIF
                 </p>
               </div>
 
@@ -476,16 +453,12 @@ export default function UploadModal({
                         <div className="flex items-center gap-3 overflow-hidden flex-1">
                           {/* Thumbnail / Icon */}
                           <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-800 flex items-center justify-center border border-white/10">
-                            {item.isVideo ? (
-                              <FilmIcon className="h-6 w-6 text-zinc-400" />
-                            ) : (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={item.previewUrl}
-                                alt={item.file.name}
-                                className="h-full w-full object-cover"
-                              />
-                            )}
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={item.previewUrl}
+                              alt={item.file.name}
+                              className="h-full w-full object-cover"
+                            />
                           </div>
 
                           {/* Title input field */}
@@ -505,8 +478,6 @@ export default function UploadModal({
                               <span className="truncate max-w-[180px]">{item.file.name}</span>
                               <span>&bull;</span>
                               <span>{formatFileSize(item.file.size)}</span>
-                              <span>&bull;</span>
-                              <span>{item.isVideo ? "Video" : "Photo"}</span>
                             </div>
                           </div>
                         </div>

@@ -28,9 +28,18 @@ export default async function handler(
         .json({ error: "filename and fileBase64 are required." });
     }
 
+    const isVideo =
+      type === "video" ||
+      /\.(mp4|webm|mov|m4v|ogg)$/i.test(filename) ||
+      (contentType && contentType.startsWith("video/"));
+
+    if (isVideo) {
+      return res.status(400).json({ error: "Only photo uploads are supported." });
+    }
+
     const buffer = Buffer.from(fileBase64, "base64");
     const result = await uploadMediaFile(filename, buffer, {
-      contentType: contentType || "application/octet-stream",
+      contentType: contentType || "image/jpeg",
       bucket: bucket || DEFAULT_BUCKET,
     });
 
@@ -38,26 +47,18 @@ export default async function handler(
     const serverClient = getSupabaseServerClient();
     if (serverClient) {
       try {
-        const isVideo =
-          type === "video" ||
-          /\.(mp4|webm|mov|m4v|ogg)$/i.test(filename);
-
         let finalWidth = Number(width);
         let finalHeight = Number(height);
 
         if (!finalWidth || !finalHeight) {
-          if (!isVideo) {
-            try {
-              const meta = await sharp(buffer).metadata();
-              finalWidth = meta.width || 1200;
-              finalHeight = meta.height || 800;
-            } catch {
-              finalWidth = 1200;
-              finalHeight = 800;
-            }
-          } else {
-            finalWidth = 1280;
-            finalHeight = 720;
+          try {
+            const meta = await sharp(buffer).metadata();
+            const isRotated = meta.orientation && [5, 6, 7, 8].includes(meta.orientation);
+            finalWidth = isRotated ? (meta.height || 1200) : (meta.width || 1200);
+            finalHeight = isRotated ? (meta.width || 800) : (meta.height || 800);
+          } catch {
+            finalWidth = 1200;
+            finalHeight = 800;
           }
         }
 
