@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { DEFAULT_BUCKET, deleteMediaFiles } from "../../utils/supabaseStorage";
+import { getSupabaseServerClient } from "../../utils/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -15,6 +16,16 @@ export default async function handler(
 
     if (!targets || targets.length === 0) {
       return res.status(400).json({ error: "filename or filenames array is required." });
+    }
+
+    // Also delete record from Supabase 'media' database table
+    const serverClient = getSupabaseServerClient();
+    if (serverClient) {
+      try {
+        await serverClient.from("media").delete().in("storage_path", targets);
+      } catch (dbErr) {
+        console.warn("[api/delete] media table delete notice:", dbErr);
+      }
     }
 
     const result = await deleteMediaFiles(targets, bucket || DEFAULT_BUCKET);

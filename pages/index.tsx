@@ -1,4 +1,4 @@
-import type { NextPage } from "next";
+import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,12 +10,14 @@ import {
   CalendarDaysIcon,
   FilmIcon,
   LockClosedIcon,
+  PencilSquareIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import Modal from "../components/Modal";
 import UploadModal from "../components/UploadModal";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import AdminLoginModal from "../components/AdminLoginModal";
+import EditMediaModal from "../components/EditMediaModal";
 import getResults from "../utils/cachedImages";
 import type { ImageProps } from "../utils/types";
 import { useLastViewedPhoto } from "../utils/useLastViewedPhoto";
@@ -37,6 +39,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [deletingItem, setDeletingItem] = useState<ImageProps | null>(null);
+  const [editingItem, setEditingItem] = useState<ImageProps | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -44,6 +47,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
 
   useEffect(() => {
     setMediaList(images);
+    refreshMedia();
   }, [images]);
 
   // Supabase Auth listener
@@ -82,7 +86,10 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
         try {
           const d = new Date(item.createdAt);
           if (!isNaN(d.getTime())) {
-            dateKey = d.toISOString().split("T")[0]; // YYYY-MM-DD
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            dateKey = `${y}-${m}-${day}`;
             displayDate = d.toLocaleDateString("en-US", {
               weekday: "short",
               year: "numeric",
@@ -204,6 +211,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
               setLastViewedPhoto(photoId);
             }}
             onDeletePhoto={user ? handleDeleteFromModal : undefined}
+            onEditPhoto={user ? (item) => setEditingItem(item) : undefined}
           />
         )}
 
@@ -219,13 +227,27 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
               </p>
             </div>
 
-            {user && (
+            {user ? (
+              <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+                <div className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-emerald-400 font-medium">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="truncate max-w-[150px] sm:max-w-[200px]">{user.email}</span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-white/30 hover:bg-white/10 hover:text-white"
+                >
+                  <ArrowRightOnRectangleIcon className="h-3.5 w-3.5" />
+                  <span>Log out</span>
+                </button>
+              </div>
+            ) : (
               <button
-                onClick={() => setIsUploadOpen(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-500 self-start sm:self-auto shadow-sm"
+                onClick={() => setIsLoginOpen(true)}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-white/30 hover:bg-white/10 hover:text-white self-start sm:self-auto"
               >
-                <ArrowUpTrayIcon className="h-4 w-4" />
-                <span>Upload</span>
+                <LockClosedIcon className="h-3.5 w-3.5" />
+                <span>Admin Login</span>
               </button>
             )}
           </div>
@@ -248,30 +270,43 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                     <span>{group.displayDate}</span>
                   </span>
                   <span className="text-xs text-zinc-400">
-                    ({group.items.length} {group.items.length === 1 ? "item" : "items"})
+                    ({group.items.length} {group.items.length === 1 ? "moment" : "moments"})
                   </span>
                 </div>
 
                 {/* Media Grid for this date (Masonry Columns to keep original aspect ratio) */}
                 <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
-                  {group.items.map(({ id, url, blurDataUrl, type, title, rawName, formattedDate, width, height }) => (
+                  {group.items.map(({ id, url, blurDataUrl, type, title, rawName, formattedDate, width, height, createdAt }) => (
                     <div
                       key={id}
                       className="group relative mb-4 break-inside-avoid overflow-hidden rounded-xl border border-white/10 bg-zinc-900/80 shadow-lg transition-all duration-300 hover:border-white/20 hover:shadow-2xl hover:shadow-black/60"
                     >
-                      {/* Delete button (Only for Admin) */}
+                      {/* Action buttons (Only for Admin) */}
                       {user && (
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setDeletingItem({ id, url, blurDataUrl, type, title, rawName, width, height });
-                          }}
-                          className="absolute top-2.5 right-2.5 z-30 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white/80 backdrop-blur-md opacity-0 transition group-hover:opacity-100 hover:bg-red-600 hover:text-white"
-                          title="Delete"
-                        >
-                          <TrashIcon className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="absolute top-2.5 right-2.5 z-30 flex items-center gap-1.5 opacity-0 transition group-hover:opacity-100">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setEditingItem({ id, url, blurDataUrl, type, title, rawName, width, height, createdAt, formattedDate });
+                            }}
+                            className="flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white/80 backdrop-blur-md transition hover:bg-blue-600 hover:text-white"
+                            title="Edit title & date"
+                          >
+                            <PencilSquareIcon className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setDeletingItem({ id, url, blurDataUrl, type, title, rawName, width, height });
+                            }}
+                            className="flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white/80 backdrop-blur-md transition hover:bg-red-600 hover:text-white"
+                            title="Delete"
+                          >
+                            <TrashIcon className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       )}
 
                       {/* Video indicator tag in top-left */}
@@ -297,7 +332,11 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                               preload="metadata"
                               muted
                               playsInline
-                              className="w-full h-auto object-cover transform brightness-90 transition duration-300 will-change-transform group-hover:scale-[1.02] group-hover:brightness-105"
+                              style={{
+                                aspectRatio:
+                                  width && height ? `${width} / ${height}` : "16 / 9",
+                              }}
+                              className="w-full h-auto block transform brightness-90 transition duration-300 will-change-transform group-hover:scale-[1.02] group-hover:brightness-105"
                             />
                             {/* Video Play Badge overlay */}
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -320,27 +359,30 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                         ) : (
                           <Image
                             alt={title || "Family photo"}
-                            className="w-full h-auto object-cover transform brightness-95 transition duration-300 will-change-transform group-hover:scale-[1.02] group-hover:brightness-105"
+                            className="w-full h-auto block transform brightness-95 transition duration-300 will-change-transform group-hover:scale-[1.02] group-hover:brightness-105"
                             placeholder="blur"
                             blurDataURL={blurDataUrl}
                             src={url}
                             width={width || 720}
                             height={height || 480}
+                            style={{
+                              aspectRatio:
+                                width && height ? `${width} / ${height}` : "auto",
+                            }}
                             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                           />
                         )}
 
                         {/* Title Overlay: Hiển thị ngay trên ảnh góc nhỏ phía dưới bên trái với hiệu ứng nền mờ dần */}
-                        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-3 pt-10 pb-2.5 flex flex-col justify-end">
-                          <p className="text-xs sm:text-sm font-semibold text-white/95 drop-shadow-md line-clamp-2">
-                            {title || "Untitled"}
-                          </p>
-                          {formattedDate && (
-                            <span className="text-[10px] text-white/60 font-medium block mt-0.5">
-                              {formattedDate}
-                            </span>
-                          )}
-                        </div>
+                        {(Boolean(title && title.trim()) || formattedDate) && (
+                          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-3 pt-10 pb-2.5 flex flex-col justify-end">
+                            {title && title.trim() ? (
+                              <span className="text-[12px] text-white/60 font-medium block mt-0.5">
+                                {title}
+                              </span>
+                            ) : null}
+                          </div>
+                        )}
                       </Link>
                     </div>
                   ))}
@@ -401,6 +443,21 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
           isDeleting={isDeleting}
         />
 
+        <EditMediaModal
+          isOpen={editingItem !== null}
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onSaveSuccess={(updated) => {
+            setMediaList((prev) =>
+              prev.map((m) =>
+                m.rawName === updated.rawName ? { ...m, ...updated } : m
+              )
+            );
+            showToast("Updated successfully!");
+            refreshMedia();
+          }}
+        />
+
         <AdminLoginModal
           isOpen={isLoginOpen}
           onClose={() => setIsLoginOpen(false)}
@@ -417,39 +474,10 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
         )}
       </main>
 
-      {/* FOOTER: Nút đăng nhập hiển thị ở cuối cùng của trang */}
-      <footer className="mt-20 border-t border-white/10 bg-black/40 py-10 px-4 text-center text-sm text-zinc-400">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 sm:flex-row sm:px-6">
-          <p className="text-xs text-zinc-400">
-            Family Diary &bull; Cherishing every moment
-          </p>
-
-          {/* Admin Login/Status in Footer */}
-          <div>
-            {user ? (
-              <div className="flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>Admin: {user.email}</span>
-                </span>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-1 rounded border border-white/15 bg-white/5 px-2.5 py-1 text-zinc-300 hover:border-white/30 hover:text-white transition"
-                >
-                  <ArrowRightOnRectangleIcon className="h-3.5 w-3.5" />
-                  <span>Log out</span>
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setIsLoginOpen(true)}
-                className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-zinc-300 hover:border-white/30 hover:bg-white/10 hover:text-white transition"
-              >
-                <LockClosedIcon className="h-3.5 w-3.5" />
-                <span>Admin Login</span>
-              </button>
-            )}
-          </div>
+      {/* Footer */}
+      <footer className="mt-20 border-t border-white/10 bg-black/40 py-8 px-4 text-center text-xs text-zinc-400">
+        <div className="mx-auto flex max-w-7xl items-center justify-center">
+          <p>Family Diary &bull; Cherishing every moment</p>
         </div>
       </footer>
     </>
@@ -458,10 +486,11 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
 
 export default Home;
 
-export async function getStaticProps() {
+export const getServerSideProps: GetServerSideProps = async () => {
+  const images = await getResults(true);
   return {
     props: {
-      images: await getResults(),
+      images,
     },
   };
-}
+};

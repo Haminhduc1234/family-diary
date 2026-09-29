@@ -23,8 +23,23 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   }, []);
 
   return (
-    <div className={`${jakarta.variable} font-sans min-h-screen bg-black text-white antialiased selection:bg-blue-600 selection:text-white`}>
-      <Component {...pageProps} />
-    </div>
+    <>
+      <style jsx global>{`
+        :root {
+          --font-jakarta: ${jakarta.style.fontFamily};
+        }
+        html,
+        body,
+        input,
+        button,
+        textarea,
+        select {
+          font-family: ${jakarta.style.fontFamily}, "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+      `}</style>
+      <div className={`${jakarta.variable} font-sans min-h-screen bg-black text-white antialiased selection:bg-blue-600 selection:text-white`}>
+        <Component {...pageProps} />
+      </div>
+    </>
   );
 }

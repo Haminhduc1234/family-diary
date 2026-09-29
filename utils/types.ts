@@ -23,4 +23,5 @@ export interface SharedModalProps {
   navigation: boolean;
   direction?: number;
   onDeletePhoto?: (id: number, filename: string) => Promise<void>;
+  onEditPhoto?: (item: ImageProps) => void;
 }

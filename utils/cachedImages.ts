@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import { getSupabaseServerClient } from "./supabase";
+import { getSupabaseServerClient, supabase } from "./supabase";
 import { DEFAULT_BUCKET, fetchStorageFiles, getMediaPublicUrl } from "./supabaseStorage";
 import type { ImageProps, MediaType } from "./types";
 
@@ -36,10 +36,21 @@ function getMediaType(filename: string): MediaType | null {
 function parseFileTitle(fileName: string): string {
   const parts = fileName.split("---");
   if (parts.length >= 2) {
+    const rawTitle = parts[1];
+    if (rawTitle.startsWith("b64_")) {
+      try {
+        const base64 = rawTitle.slice(4).replace(/-/g, "+").replace(/_/g, "/");
+        const decoded = Buffer.from(base64, "base64").toString("utf-8").trim();
+        if (decoded) return decoded;
+      } catch {
+        // fallback
+      }
+    }
     try {
-      return decodeURIComponent(parts[1]).replace(/_/g, " ").trim();
+      const decoded = decodeURIComponent(rawTitle).replace(/_/g, " ").trim();
+      if (decoded) return decoded;
     } catch {
-      return parts[1].replace(/_/g, " ").trim();
+      return rawTitle.replace(/_/g, " ").trim();
     }
   }
   const withoutExt = fileName.replace(/\.[^/.]+$/, "");
@@ -135,6 +146,58 @@ export default async function getResults(forceRefresh: boolean = false): Promise
 
   const bucket = DEFAULT_BUCKET;
 
+  // 1. Fetch strictly from Supabase database 'media' table
+  const dbClient = getSupabaseServerClient() || supabase;
+  if (dbClient) {
+    try {
+      const { data: dbRows, error: dbError } = await dbClient
+        .from("media")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!dbError && dbRows) {
+        // Table exists in database: strictly use database records
+        cached = await Promise.all(
+          dbRows.map(async (row: any, id: number) => {
+            const isVideo = row.type === "video";
+            const formattedDate = formatMediaDate(row.created_at);
+            const dateObj = row.created_at ? new Date(row.created_at) : new Date();
+
+            let blurDataUrl = row.blur_data_url;
+            let width = row.width || (isVideo ? 1280 : 720);
+            let height = row.height || (isVideo ? 720 : 480);
+
+            if (!isVideo && !blurDataUrl) {
+              const meta = await describeImage(row.storage_path, row.url, bucket);
+              width = meta.width;
+              height = meta.height;
+              blurDataUrl = meta.blurDataUrl;
+            } else if (isVideo) {
+              blurDataUrl = VIDEO_BLUR_DATA_URL;
+            }
+
+            return {
+              id,
+              url: row.url,
+              width,
+              height,
+              blurDataUrl: blurDataUrl || DEFAULT_IMAGE_BLUR_DATA_URL,
+              type: isVideo ? "video" : "image",
+              title: row.title || "Untitled",
+              rawName: row.storage_path,
+              createdAt: row.created_at || dateObj.toISOString(),
+              formattedDate,
+            };
+          })
+        );
+        return cached;
+      }
+    } catch (e) {
+      console.warn("[cachedImages] Database query error:", e);
+    }
+  }
+
+  // 2. Fallback to listing files directly from Storage bucket
   try {
     const files = await fetchStorageFiles("", bucket);
 

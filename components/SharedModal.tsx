@@ -4,6 +4,7 @@ import {
   ArrowUturnLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  PencilSquareIcon,
   XMarkIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
@@ -27,6 +28,7 @@ export default function SharedModal({
   currentPhoto,
   direction,
   onDeletePhoto,
+  onEditPhoto,
 }: SharedModalProps) {
   const [loaded, setLoaded] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -173,6 +175,15 @@ export default function SharedModal({
                 >
                   <ArrowDownTrayIcon className="h-5 w-5" />
                 </button>
+                {onEditPhoto && (
+                  <button
+                    onClick={() => onEditPhoto(currentImage)}
+                    className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-blue-600/80 hover:text-white"
+                    title="Edit title & date"
+                  >
+                    <PencilSquareIcon className="h-5 w-5" />
+                  </button>
+                )}
                 {onDeletePhoto && (
                   <button
                     onClick={() => setShowDeleteConfirm(true)}

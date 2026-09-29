@@ -40,7 +40,7 @@ export default function DeleteConfirmModal({
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/90 p-6 text-white shadow-2xl backdrop-blur-xl"
+            className="relative z-10 font-sans w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/90 p-6 text-white shadow-2xl backdrop-blur-xl"
           >
             <div className="flex items-center gap-3 text-red-400">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/10 border border-red-500/20">

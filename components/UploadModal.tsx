@@ -1,6 +1,7 @@
 import { Dialog } from "@headlessui/react";
 import {
   ArrowUpTrayIcon,
+  CalendarDaysIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
   FilmIcon,
@@ -37,6 +38,13 @@ export default function UploadModal({
   const [fileList, setFileList] = useState<UploadFileItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatFileSize = (bytes: number): string => {
@@ -64,7 +72,7 @@ export default function UploadModal({
       newItems.push({
         id: `${file.name}-${Date.now()}-${Math.random()}`,
         file,
-        title: defaultTitle,
+        title: "",
         previewUrl,
         isVideo,
         status: "idle",
@@ -116,6 +124,63 @@ export default function UploadModal({
     });
   };
 
+  const encodeTitleSafe = (title: string): string => {
+    try {
+      const trimmed = title.trim();
+      if (!trimmed) return "";
+      const bytes = new TextEncoder().encode(trimmed);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const b64 = btoa(binary)
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+      return `b64_${b64}`;
+    } catch (err) {
+      console.error("Failed to encode title to base64:", err);
+      return "";
+    }
+  };
+
+  const getMediaDimensions = (
+    file: File,
+    isVideo: boolean
+  ): Promise<{ width: number; height: number }> => {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file);
+      if (isVideo) {
+        const v = document.createElement("video");
+        v.preload = "metadata";
+        v.onloadedmetadata = () => {
+          const w = v.videoWidth || 1280;
+          const h = v.videoHeight || 720;
+          URL.revokeObjectURL(url);
+          resolve({ width: w, height: h });
+        };
+        v.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve({ width: 1280, height: 720 });
+        };
+        v.src = url;
+      } else {
+        const img = new window.Image();
+        img.onload = () => {
+          const w = img.naturalWidth || 1200;
+          const h = img.naturalHeight || 800;
+          URL.revokeObjectURL(url);
+          resolve({ width: w, height: h });
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve({ width: 1200, height: 800 });
+        };
+        img.src = url;
+      }
+    });
+  };
+
   const uploadAll = async () => {
     if (fileList.length === 0 || isUploading) return;
 
@@ -135,30 +200,67 @@ export default function UploadModal({
 
       try {
         const file = item.file;
-        const timestamp = Date.now();
-        const userTitle = item.title.trim() || file.name.replace(/\.[^/.]+$/, "");
-        const safeTitle = encodeURIComponent(userTitle.replace(/\s+/g, "_"));
+        const userTitle = item.title.trim();
+        const titleTag = encodeTitleSafe(userTitle);
         const safeName = file.name
           .replace(/[^a-zA-Z0-9._-]/g, "_")
           .toLowerCase();
-        // Path format: timestamp---customTitle---filename
-        const uploadPath = `${timestamp}---${safeTitle}---${safeName}`;
+
+        // Calculate ISO date timestamp for the selected date
+        let itemIso = new Date().toISOString();
+        let timestamp = Date.now();
+        if (selectedDate) {
+          const [y, m, d] = selectedDate.split("-").map(Number);
+          const localDate = new Date(y, m - 1, d, 12, 0, 0);
+          const itemDate = new Date(localDate.getTime() + i * 1000);
+          itemIso = itemDate.toISOString();
+          timestamp = itemDate.getTime();
+        }
+
+        // Path format: timestamp---b64_base64url---safeName
+        const uploadPath = titleTag
+          ? `${timestamp}---${titleTag}---${safeName}`
+          : `${timestamp}---${safeName}`;
+
+        // Measure natural dimensions of the media file
+        const dims = await getMediaDimensions(file, item.isVideo);
 
         let uploadSucceeded = false;
 
         // Try direct browser client upload first (efficient, no size limits)
         if (supabase) {
-          const { error } = await supabase.storage
+          const { error: storageError } = await supabase.storage
             .from(DEFAULT_BUCKET)
             .upload(uploadPath, file, {
               contentType: file.type || "application/octet-stream",
               upsert: true,
             });
 
-          if (!error) {
+          if (!storageError) {
             uploadSucceeded = true;
+            const { data: urlData } = supabase.storage
+              .from(DEFAULT_BUCKET)
+              .getPublicUrl(uploadPath);
+
+            // Insert into Supabase database 'media' table with exact dimensions and chosen date
+            try {
+              const { error: dbErr } = await supabase.from("media").insert({
+                title: userTitle,
+                storage_path: uploadPath,
+                url: urlData.publicUrl,
+                type: item.isVideo ? "video" : "image",
+                width: dims.width,
+                height: dims.height,
+                created_at: itemIso,
+              });
+              if (dbErr) {
+                console.warn("[UploadModal] Database insert notice:", dbErr.message);
+              }
+            } catch (dbEx) {
+              console.warn("[UploadModal] Database insert error:", dbEx);
+            }
           } else {
-            console.warn("Direct upload error, trying API fallback:", error.message);
+            console.warn("Direct upload error, trying API fallback:", storageError.message);
           }
         }
 
@@ -183,6 +285,11 @@ export default function UploadModal({
               fileBase64: base64Data,
               contentType: file.type,
               bucket: DEFAULT_BUCKET,
+              title: userTitle,
+              type: item.isVideo ? "video" : "image",
+              width: dims.width,
+              height: dims.height,
+              createdAt: itemIso,
             }),
           });
 
@@ -256,7 +363,7 @@ export default function UploadModal({
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            className="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 text-white shadow-2xl backdrop-blur-2xl"
+            className="relative z-10 font-sans flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 text-white shadow-2xl backdrop-blur-2xl"
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
@@ -283,7 +390,31 @@ export default function UploadModal({
             </div>
 
             {/* Body */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Batch Date Selector */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/15 text-blue-400 border border-blue-500/25">
+                    <CalendarDaysIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-white">
+                      Timeline Date
+                    </label>
+                    <p className="text-[11px] text-zinc-400">
+                      Select milestone date for all files in this batch
+                    </p>
+                  </div>
+                </div>
+                <input
+                  type="date"
+                  disabled={isUploading}
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="rounded-lg border border-white/15 bg-black/50 px-3 py-1.5 text-xs text-white [color-scheme:dark] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition cursor-pointer self-start sm:self-auto"
+                />
+              </div>
+
               {/* Dropzone */}
               <div
                 onDragOver={handleDragOver}

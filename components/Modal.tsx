@@ -10,10 +10,12 @@ export default function Modal({
   images,
   onClose,
   onDeletePhoto,
+  onEditPhoto,
 }: {
   images: ImageProps[];
   onClose?: () => void;
   onDeletePhoto?: (id: number, filename: string) => Promise<void>;
+  onEditPhoto?: (item: ImageProps) => void;
 }) {
   let overlayRef = useRef();
   const router = useRouter();
@@ -82,6 +84,7 @@ export default function Modal({
         closeModal={handleClose}
         navigation={true}
         onDeletePhoto={onDeletePhoto}
+        onEditPhoto={onEditPhoto}
       />
     </Dialog>
   );
