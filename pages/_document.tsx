@@ -29,8 +29,24 @@ class MyDocument extends Document {
             property="og:description"
             content="A visual timeline of memories"
           />
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                try {
+                  var t = localStorage.getItem('theme');
+                  if (t === 'light') {
+                    document.documentElement.classList.remove('dark');
+                  } else {
+                    document.documentElement.classList.add('dark');
+                  }
+                } catch (e) {
+                  document.documentElement.classList.add('dark');
+                }
+              `,
+            }}
+          />
         </Head>
-        <body className="bg-black antialiased text-white">
+        <body className="bg-zinc-50 text-zinc-900 antialiased dark:bg-black dark:text-white transition-colors duration-200">
           <Main />
           <NextScript />
         </body>

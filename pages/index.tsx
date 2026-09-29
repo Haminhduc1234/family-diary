@@ -19,6 +19,7 @@ import UploadModal from "../components/UploadModal";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import AdminLoginModal from "../components/AdminLoginModal";
 import EditMediaModal from "../components/EditMediaModal";
+import ThemeToggle from "../components/ThemeToggle";
 import getResults from "../utils/cachedImages";
 import type { ImageProps } from "../utils/types";
 import { useLastViewedPhoto } from "../utils/useLastViewedPhoto";
@@ -217,61 +218,65 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
         )}
 
         {/* Simple & Minimalist Header */}
-        <header className="mb-8 sm:mb-12 border-b border-white/10 pb-6 sm:pb-8">
+        <header className="mb-8 sm:mb-12 border-b border-zinc-200/80 pb-6 sm:pb-8 dark:border-white/10">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
                 Family Diary
               </h1>
-              <p className="mt-1 text-sm text-zinc-400">
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                 A visual timeline of memories
               </p>
             </div>
 
-            {user ? (
-              <div className="flex flex-wrap items-center justify-end gap-2.5">
-                <div className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-emerald-400 font-medium">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="truncate max-w-[120px] sm:max-w-[200px]">{user.email}</span>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+
+              {user ? (
+                <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-2.5">
+                  <div className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-emerald-600 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-emerald-400 dark:shadow-none">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="truncate max-w-[110px] sm:max-w-[200px]">{user.email}</span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-900 dark:border-white/15 dark:bg-white/5 dark:text-zinc-300 dark:shadow-none dark:hover:border-white/30 dark:hover:bg-white/10 dark:hover:text-white"
+                  >
+                    <ArrowRightOnRectangleIcon className="h-3.5 w-3.5" />
+                    <span>Log out</span>
+                  </button>
                 </div>
+              ) : (
                 <button
-                  onClick={handleLogout}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-white/30 hover:bg-white/10 hover:text-white"
+                  onClick={() => setIsLoginOpen(true)}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-100 hover:text-zinc-900 dark:border-white/15 dark:bg-white/5 dark:text-zinc-400 dark:shadow-none dark:hover:border-white/30 dark:hover:bg-white/10 dark:hover:text-white"
+                  title="Admin Login"
+                  aria-label="Admin Login"
                 >
-                  <ArrowRightOnRectangleIcon className="h-3.5 w-3.5" />
-                  <span>Log out</span>
+                  <GlobeAltIcon className="h-4 w-4" />
                 </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setIsLoginOpen(true)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-zinc-400 transition hover:border-white/30 hover:bg-white/10 hover:text-white"
-                title="Admin Login"
-                aria-label="Admin Login"
-              >
-                <GlobeAltIcon className="h-5 w-5" />
-              </button>
-            )}
+              )}
+            </div>
           </div>
         </header>
 
         {/* Timeline Container */}
         {timelineGroups.length > 0 ? (
-          <div className="relative border-l border-white/15 ml-3 sm:ml-6 pl-6 sm:pl-8 space-y-12">
+          <div className="relative border-l border-zinc-200/80 ml-3 sm:ml-6 pl-6 sm:pl-8 space-y-12 dark:border-white/15">
             {timelineGroups.map((group) => (
               <section key={group.dateKey} className="relative">
                 {/* Timeline node icon */}
-                <div className="absolute -left-[45px] sm:-left-[45px] top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-blue-400/40 bg-zinc-900 shadow-md shadow-blue-500/20">
-                  <div className="h-2 w-2 rounded-full bg-blue-400" />
+                <div className="absolute -left-[45px] sm:-left-[45px] top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-blue-400/40 bg-white shadow-md shadow-blue-500/10 dark:bg-zinc-900 dark:shadow-blue-500/20">
+                  <div className="h-2 w-2 rounded-full bg-blue-500" />
                 </div>
 
                 {/* Date milestone label */}
                 <div className="mb-5 flex flex-wrap items-center gap-2.5">
-                  <span className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white shadow-sm backdrop-blur-md">
-                    <CalendarDaysIcon className="h-3.5 w-3.5 text-blue-400" />
+                  <span className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white/90 px-3 py-1 text-xs font-semibold text-zinc-800 shadow-sm backdrop-blur-md dark:border-white/15 dark:bg-white/10 dark:text-white dark:shadow-none">
+                    <CalendarDaysIcon className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
                     <span>{group.displayDate}</span>
                   </span>
-                  <span className="text-xs text-zinc-400">
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
                     ({group.items.length} {group.items.length === 1 ? "moment" : "moments"})
                   </span>
                 </div>
@@ -281,7 +286,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                   {group.items.map(({ id, url, blurDataUrl, type, title, rawName, formattedDate, width, height, createdAt }) => (
                     <div
                       key={id}
-                      className="group relative mb-4 break-inside-avoid overflow-hidden rounded-xl border border-white/10 bg-zinc-900/80 shadow-lg transition-all duration-300 hover:border-white/20 hover:shadow-2xl hover:shadow-black/60"
+                      className="group relative mb-4 break-inside-avoid overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-sm transition-all duration-300 hover:border-zinc-300 hover:shadow-xl dark:border-white/10 dark:bg-zinc-900/80 dark:shadow-lg dark:hover:border-white/20 dark:hover:shadow-2xl dark:hover:shadow-black/60"
                     >
                       {/* Action buttons (Only for Admin) */}
                       {user && (
@@ -394,12 +399,12 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
           </div>
         ) : (
           /* Empty state */
-          <div className="my-16 flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-12 text-center text-white backdrop-blur-md">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/10 text-white/70">
-              <CalendarDaysIcon className="h-7 w-7" />
+          <div className="my-16 flex flex-col items-center justify-center rounded-2xl border border-zinc-200/80 bg-white/80 p-12 text-center text-zinc-900 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:text-white">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 text-zinc-600 dark:bg-white/10 dark:text-white/70">
+              <CalendarDaysIcon className="h-7 w-7 text-blue-500" />
             </div>
             <h2 className="text-lg font-semibold">No memories yet</h2>
-            <p className="mt-1.5 max-w-md text-sm text-zinc-400">
+            <p className="mt-1.5 max-w-md text-sm text-zinc-500 dark:text-zinc-400">
               {user
                 ? "The timeline is currently empty. Upload photos or videos to get started."
                 : "No shared memories on the timeline yet."}
@@ -470,14 +475,14 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
 
         {/* Toast */}
         {toastMessage && (
-          <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 transform rounded-xl border border-white/15 bg-zinc-900/95 px-5 py-3 text-sm font-medium text-white shadow-2xl backdrop-blur-xl animate-fade-in">
+          <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 transform rounded-xl border border-zinc-200 bg-white/95 px-5 py-3 text-sm font-medium text-zinc-900 shadow-2xl backdrop-blur-xl animate-fade-in dark:border-white/15 dark:bg-zinc-900/95 dark:text-white">
             {toastMessage}
           </div>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="mt-20 border-t border-white/10 bg-black/40 py-8 px-4 text-center text-xs text-zinc-400">
+      <footer className="mt-20 border-t border-zinc-200/80 bg-zinc-100/50 py-8 px-4 text-center text-xs text-zinc-500 dark:border-white/10 dark:bg-black/40 dark:text-zinc-400">
         <div className="mx-auto flex max-w-7xl items-center justify-center">
           <p>Family Diary &bull; Cherishing every moment</p>
         </div>
