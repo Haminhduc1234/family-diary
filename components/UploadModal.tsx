@@ -388,7 +388,7 @@ export default function UploadModal({
                   disabled={isUploading}
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="rounded-lg border border-white/15 bg-black/50 px-3 py-1.5 text-xs text-white [color-scheme:dark] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition cursor-pointer self-start sm:self-auto"
+                  className="rounded-lg border border-white/15 bg-black/50 px-3 py-1.5 text-base sm:text-xs text-white [color-scheme:dark] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition cursor-pointer self-start sm:self-auto"
                 />
               </div>
 
@@ -472,7 +472,7 @@ export default function UploadModal({
                               value={item.title}
                               onChange={(e) => updateFileTitle(item.id, e.target.value)}
                               placeholder="Enter title..."
-                              className="w-full rounded-md border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-white placeholder-white/30 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition"
+                              className="w-full rounded-md border border-white/15 bg-white/5 px-2.5 py-1.5 text-base sm:text-xs text-white placeholder-white/30 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition"
                             />
                             <div className="mt-1 flex items-center gap-2 text-[10px] text-white/40">
                               <span className="truncate max-w-[180px]">{item.file.name}</span>
