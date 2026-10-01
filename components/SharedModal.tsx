@@ -4,13 +4,15 @@ import {
   ArrowUturnLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  MagnifyingGlassMinusIcon,
+  MagnifyingGlassPlusIcon,
   PencilSquareIcon,
   XMarkIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSwipeable } from "react-swipeable";
 import { variants } from "../utils/animationVariants";
 import downloadPhoto from "../utils/downloadPhoto";
@@ -34,11 +36,156 @@ export default function SharedModal({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Zoom & Pan state
+  const [zoomScale, setZoomScale] = useState(1);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const dragStartRef = useRef({ startX: 0, startY: 0, posX: 0, posY: 0 });
+  const lastTouchDistanceRef = useRef<number | null>(null);
+  const lastTapRef = useRef<number>(0);
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+
   const currentImage = images ? images[index] : currentPhoto;
 
   useEffect(() => {
     setLoaded(false);
+    setZoomScale(1);
+    setPanPosition({ x: 0, y: 0 });
   }, [index]);
+
+  const handleZoomIn = (step = 0.5) => {
+    setZoomScale((prev) => {
+      const next = Math.min(prev + step, 4);
+      if (next === 1) setPanPosition({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const handleZoomOut = (step = 0.5) => {
+    setZoomScale((prev) => {
+      const next = Math.max(prev - step, 1);
+      if (next === 1) setPanPosition({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const handleResetZoom = () => {
+    setZoomScale(1);
+    setPanPosition({ x: 0, y: 0 });
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if (currentImage.type === "video") return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (zoomScale > 1) {
+      handleResetZoom();
+    } else {
+      setZoomScale(2);
+      setPanPosition({ x: 0, y: 0 });
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (currentImage.type === "video") return;
+    if (e.deltaY < 0) {
+      handleZoomIn(0.25);
+    } else {
+      handleZoomOut(0.25);
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoomScale <= 1 || currentImage.type === "video") return;
+    e.preventDefault();
+    setIsPanning(true);
+    dragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      posX: panPosition.x,
+      posY: panPosition.y,
+    };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isPanning || zoomScale <= 1) return;
+    const dx = e.clientX - dragStartRef.current.startX;
+    const dy = e.clientY - dragStartRef.current.startY;
+    setPanPosition({
+      x: dragStartRef.current.posX + dx,
+      y: dragStartRef.current.posY + dy,
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (currentImage.type === "video") return;
+    if (e.touches.length === 1) {
+      const now = Date.now();
+      if (now - lastTapRef.current < 300) {
+        if (zoomScale > 1) {
+          handleResetZoom();
+        } else {
+          setZoomScale(2);
+          setPanPosition({ x: 0, y: 0 });
+        }
+        lastTapRef.current = 0;
+        return;
+      }
+      lastTapRef.current = now;
+
+      if (zoomScale > 1) {
+        setIsPanning(true);
+        dragStartRef.current = {
+          startX: e.touches[0].clientX,
+          startY: e.touches[0].clientY,
+          posX: panPosition.x,
+          posY: panPosition.y,
+        };
+      }
+    } else if (e.touches.length === 2) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      lastTouchDistanceRef.current = Math.hypot(
+        touch1.clientX - touch2.clientX,
+        touch1.clientY - touch2.clientY
+      );
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (currentImage.type === "video") return;
+    if (e.touches.length === 1 && isPanning && zoomScale > 1) {
+      const dx = e.touches[0].clientX - dragStartRef.current.startX;
+      const dy = e.touches[0].clientY - dragStartRef.current.startY;
+      setPanPosition({
+        x: dragStartRef.current.posX + dx,
+        y: dragStartRef.current.posY + dy,
+      });
+    } else if (e.touches.length === 2 && lastTouchDistanceRef.current !== null) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const dist = Math.hypot(
+        touch1.clientX - touch2.clientX,
+        touch1.clientY - touch2.clientY
+      );
+      const ratio = dist / lastTouchDistanceRef.current;
+      setZoomScale((prev) => {
+        const next = Math.min(Math.max(prev * ratio, 1), 4);
+        if (next === 1) setPanPosition({ x: 0, y: 0 });
+        return next;
+      });
+      lastTouchDistanceRef.current = dist;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsPanning(false);
+    lastTouchDistanceRef.current = null;
+  };
 
   const filteredImages = images?.filter((img: ImageProps) =>
     range(index - 15, index + 15).includes(img.id)
@@ -46,16 +193,16 @@ export default function SharedModal({
 
   const handlers = useSwipeable({
     onSwipedLeft: () => {
-      if (images && index < images.length - 1) {
+      if (zoomScale <= 1 && images && index < images.length - 1) {
         changePhotoId(index + 1);
       }
     },
     onSwipedRight: () => {
-      if (index > 0) {
+      if (zoomScale <= 1 && index > 0) {
         changePhotoId(index - 1);
       }
     },
-    trackMouse: true,
+    trackMouse: zoomScale <= 1,
   });
 
   if (!currentImage) return null;
@@ -115,24 +262,45 @@ export default function SharedModal({
                     />
                   </div>
                 ) : (
-                  <Image
-                    src={currentImage.url}
-                    width={currentImage.width || (navigation ? 1280 : 1920)}
-                    height={currentImage.height || (navigation ? 853 : 1280)}
-                    priority
-                    alt={currentImage.title || "Family Diary media"}
+                  <div
+                    ref={imageContainerRef}
+                    className="relative flex items-center justify-center select-none"
+                    onDoubleClick={handleDoubleClick}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onWheel={handleWheel}
                     style={{
-                      aspectRatio:
-                        currentImage.width && currentImage.height
-                          ? `${currentImage.width} / ${currentImage.height}`
-                          : undefined,
+                      transform: `translate3d(${panPosition.x}px, ${panPosition.y}px, 0px) scale(${zoomScale})`,
+                      transition: isPanning ? "none" : "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+                      cursor: zoomScale > 1 ? (isPanning ? "grabbing" : "grab") : "zoom-in",
+                      touchAction: zoomScale > 1 ? "none" : "auto",
                     }}
-                    className={`${navigation
-                      ? "max-h-[calc(100dvh-150px)] sm:max-h-[80vh]"
-                      : "max-h-[calc(100dvh-90px)] sm:max-h-[85vh]"
-                      } w-auto max-w-full object-contain`}
-                    onLoad={() => setLoaded(true)}
-                  />
+                  >
+                    <Image
+                      src={currentImage.url}
+                      width={currentImage.width || (navigation ? 1280 : 1920)}
+                      height={currentImage.height || (navigation ? 853 : 1280)}
+                      priority
+                      alt={currentImage.title || "Family Diary media"}
+                      draggable={false}
+                      style={{
+                        aspectRatio:
+                          currentImage.width && currentImage.height
+                            ? `${currentImage.width} / ${currentImage.height}`
+                            : undefined,
+                      }}
+                      className={`${navigation
+                        ? "max-h-[calc(100dvh-150px)] sm:max-h-[80vh]"
+                        : "max-h-[calc(100dvh-90px)] sm:max-h-[85vh]"
+                        } w-auto max-w-full object-contain pointer-events-none`}
+                      onLoad={() => setLoaded(true)}
+                    />
+                  </div>
                 )}
               </motion.div>
             </AnimatePresence>
@@ -167,6 +335,26 @@ export default function SharedModal({
                 </>
               )}
               <div className="pointer-events-auto absolute top-0 right-0 flex items-center gap-2 p-3 sm:p-4 text-white">
+                {currentImage.type !== "video" && (
+                  <div className="flex items-center gap-0.5 rounded-full bg-black/50 p-1 backdrop-blur-lg">
+                    <button
+                      onClick={() => handleZoomOut(0.5)}
+                      disabled={zoomScale <= 1}
+                      className="rounded-full p-1.5 text-white/75 transition hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
+                      title="Zoom out (-)"
+                    >
+                      <MagnifyingGlassMinusIcon className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => handleZoomIn(0.5)}
+                      disabled={zoomScale >= 4}
+                      className="rounded-full p-1.5 text-white/75 transition hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
+                      title="Zoom in (+)"
+                    >
+                      <MagnifyingGlassPlusIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                )}
                 <a
                   href={currentImage.url}
                   className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white"
@@ -225,6 +413,27 @@ export default function SharedModal({
                   </span>
                 )}
               </div>
+
+              {/* Zoom % indicator centered below image when zoomed */}
+              {currentImage.type !== "video" && zoomScale > 1 && (
+                <div
+                  className={`pointer-events-auto absolute left-1/2 -translate-x-1/2 z-40 flex items-center gap-2.5 rounded-full border border-white/20 bg-black/80 px-3.5 py-1.5 text-xs font-medium text-white shadow-2xl backdrop-blur-xl animate-fade-in ${
+                    navigation ? "bottom-24 sm:bottom-28" : "bottom-6 sm:bottom-8"
+                  }`}
+                >
+                  <span className="font-semibold text-white/95">
+                    {Math.round(zoomScale * 100)}%
+                  </span>
+                  <span className="h-3 w-px bg-white/25" />
+                  <button
+                    onClick={handleResetZoom}
+                    className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition"
+                    title="Reset zoom về 100%"
+                  >
+                    Reset
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
