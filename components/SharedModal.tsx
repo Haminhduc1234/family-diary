@@ -32,7 +32,6 @@ export default function SharedModal({
   onDeletePhoto,
   onEditPhoto,
 }: SharedModalProps) {
-  const [loaded, setLoaded] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -48,7 +47,6 @@ export default function SharedModal({
   const currentImage = images ? images[index] : currentPhoto;
 
   useEffect(() => {
-    setLoaded(false);
     setZoomScale(1);
     setPanPosition({ x: 0, y: 0 });
   }, [index]);
@@ -187,9 +185,7 @@ export default function SharedModal({
     lastTouchDistanceRef.current = null;
   };
 
-  const filteredImages = images?.filter((img: ImageProps) =>
-    range(index - 15, index + 15).includes(img.id)
-  );
+  const filteredImages = images;
 
   const handlers = useSwipeable({
     onSwipedLeft: () => {
@@ -257,8 +253,6 @@ export default function SharedModal({
                         ? "max-h-[calc(100dvh-150px)] sm:max-h-[80vh]"
                         : "max-h-[calc(100dvh-90px)] sm:max-h-[85vh]"
                         } max-w-full rounded-lg shadow-2xl object-contain`}
-                      onLoadedData={() => setLoaded(true)}
-                      onCanPlay={() => setLoaded(true)}
                     />
                   </div>
                 ) : (
@@ -298,7 +292,8 @@ export default function SharedModal({
                         ? "max-h-[calc(100dvh-150px)] sm:max-h-[80vh]"
                         : "max-h-[calc(100dvh-90px)] sm:max-h-[85vh]"
                         } w-auto max-w-full object-contain pointer-events-none`}
-                      onLoad={() => setLoaded(true)}
+                      placeholder={currentImage.blurDataUrl ? "blur" : "empty"}
+                      blurDataURL={currentImage.blurDataUrl}
                     />
                   </div>
                 )}
@@ -310,8 +305,7 @@ export default function SharedModal({
         {/* Buttons + bottom nav bar */}
         <div className="absolute inset-0 mx-auto flex max-w-7xl items-center justify-center pointer-events-none">
           {/* Buttons overlay */}
-          {loaded && (
-            <div className="relative h-full w-full pointer-events-none">
+          <div className="relative h-full w-full pointer-events-none">
               {navigation && images && (
                 <>
                   {index > 0 && (
@@ -408,8 +402,13 @@ export default function SharedModal({
                   )}
                 </button>
                 {currentImage.title && (
-                  <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-medium text-white/90 backdrop-blur-lg max-w-[200px] xs:max-w-[250px] sm:max-w-md">
+                  <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-medium text-white/90 backdrop-blur-lg max-w-[200px] xs:max-w-[250px] sm:max-w-md truncate">
                     {currentImage.title}
+                  </span>
+                )}
+                {navigation && images && images.length > 1 && (
+                  <span className="rounded-full bg-black/50 px-2.5 py-1.5 text-xs font-semibold text-white/80 backdrop-blur-lg">
+                    {index + 1} / {images.length}
                   </span>
                 )}
               </div>
@@ -434,34 +433,33 @@ export default function SharedModal({
                 </div>
               )}
             </div>
-          )}
 
           {/* Bottom Nav bar */}
-          {navigation && images && filteredImages && (
+          {navigation && images && images.length > 0 && (
             <div className="fixed inset-x-0 bottom-0 z-40 overflow-hidden bg-gradient-to-b from-black/0 to-black/60 pointer-events-auto">
               <motion.div
                 initial={false}
                 className="mx-auto mt-4 mb-4 sm:mt-6 sm:mb-6 flex aspect-[3/2] h-12 sm:h-14"
               >
                 <AnimatePresence initial={false}>
-                  {filteredImages.map(({ url, id, type, title }) => (
+                  {images.map(({ url, id, type, title }, i) => (
                     <motion.button
                       initial={{
                         width: "0%",
-                        x: `${Math.max((index - 1) * -100, 15 * -100)}%`,
+                        x: `${(index - 1) * -100}%`,
                       }}
                       animate={{
-                        scale: id === index ? 1.25 : 1,
+                        scale: i === index ? 1.25 : 1,
                         width: "100%",
-                        x: `${Math.max(index * -100, 15 * -100)}%`,
+                        x: `${index * -100}%`,
                       }}
                       exit={{ width: "0%" }}
-                      onClick={() => changePhotoId(id)}
+                      onClick={() => changePhotoId(i)}
                       key={id}
-                      className={`${id === index
+                      className={`${i === index
                         ? "z-20 rounded-md shadow shadow-black/50 ring-2 ring-white/50"
                         : "z-10"
-                        } ${id === 0 ? "rounded-l-md" : ""} ${id === images.length - 1 ? "rounded-r-md" : ""
+                        } ${i === 0 ? "rounded-l-md" : ""} ${i === images.length - 1 ? "rounded-r-md" : ""
                         } relative inline-block w-full shrink-0 transform-gpu overflow-hidden focus:outline-none`}
                     >
                       {type === "video" ? (
@@ -471,7 +469,7 @@ export default function SharedModal({
                             preload="metadata"
                             muted
                             playsInline
-                            className={`${id === index
+                            className={`${i === index
                               ? "brightness-110"
                               : "brightness-50 contrast-125 hover:brightness-75"
                               } h-full w-full transform object-cover transition`}
@@ -494,7 +492,7 @@ export default function SharedModal({
                           alt={title || "small photos on the bottom"}
                           width={180}
                           height={120}
-                          className={`${id === index
+                          className={`${i === index
                             ? "brightness-110 hover:brightness-110"
                             : "brightness-50 contrast-125 hover:brightness-75"
                             } h-full transform object-cover transition`}

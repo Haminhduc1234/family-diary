@@ -1,7 +1,7 @@
 import { Dialog } from "@headlessui/react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import useKeypress from "react-use-keypress";
 import type { ImageProps } from "../utils/types";
 import SharedModal from "./SharedModal";
@@ -21,42 +21,57 @@ export default function Modal({
   const router = useRouter();
 
   const { photoId } = router.query;
-  let index = Number(photoId);
+  const initialIndex = images.findIndex((img) => img.id === Number(photoId));
+  const activeIndex = initialIndex >= 0 ? initialIndex : 0;
 
   const [direction, setDirection] = useState(0);
-  const [curIndex, setCurIndex] = useState(index);
+  const [curIndex, setCurIndex] = useState(activeIndex);
+
+  useEffect(() => {
+    if (photoId !== undefined) {
+      const idx = images.findIndex((img) => img.id === Number(photoId));
+      if (idx >= 0 && idx !== curIndex) {
+        setDirection(idx > curIndex ? 1 : -1);
+        setCurIndex(idx);
+      }
+    }
+  }, [photoId, images]);
 
   function handleClose() {
     router.push("/", undefined, { shallow: true });
-    onClose();
+    if (onClose) onClose();
   }
 
-  function changePhotoId(newVal: number) {
-    if (newVal > index) {
+  function changePhotoId(newIndex: number) {
+    if (newIndex < 0 || newIndex >= images.length) return;
+    if (newIndex > curIndex) {
       setDirection(1);
     } else {
       setDirection(-1);
     }
-    setCurIndex(newVal);
-    router.push(
-      {
-        pathname: "/",
-        query: { photoId: newVal },
-      },
-      `/p/${newVal}`,
-      { shallow: true },
-    );
+    setCurIndex(newIndex);
+    const targetPhoto = images[newIndex];
+    if (targetPhoto) {
+      router.push(
+        {
+          pathname: "/",
+          query: { photoId: targetPhoto.id },
+        },
+        `/p/${targetPhoto.id}`,
+        { shallow: true },
+      );
+    }
   }
 
   useKeypress("ArrowRight", () => {
-    if (index + 1 < images.length) {
-      changePhotoId(index + 1);
+    if (curIndex + 1 < images.length) {
+      changePhotoId(curIndex + 1);
     }
   });
 
   useKeypress("ArrowLeft", () => {
-    if (index > 0) {
-      changePhotoId(index - 1);
+    if (curIndex > 0) {
+      changePhotoId(curIndex - 1);
     }
   });
 

@@ -122,6 +122,16 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
     }));
   }, [mediaList]);
 
+  // Scoped media items of that day for the modal carousel
+  const activeDayImages = useMemo(() => {
+    if (!photoId) return [];
+    const targetId = Number(photoId);
+    const activeGroup = timelineGroups.find((group) =>
+      group.items.some((item) => item.id === targetId)
+    );
+    return activeGroup ? activeGroup.items : mediaList;
+  }, [photoId, timelineGroups, mediaList]);
+
   const refreshMedia = async (force: boolean = false) => {
     try {
       const res = await fetch(`/api/media${force ? "?refresh=true" : ""}`);
@@ -213,7 +223,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
       <main className="mx-auto min-h-screen max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         {photoId && (
           <Modal
-            images={mediaList}
+            images={activeDayImages}
             onClose={() => {
               setLastViewedPhoto(photoId);
             }}
@@ -315,7 +325,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                     return (
                       <div
                         key={id}
-                        className="group relative mb-2.5 sm:mb-4 break-inside-avoid overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-sm transition-all duration-300 hover:border-zinc-300 hover:shadow-xl dark:border-white/10 dark:bg-zinc-900/80 dark:shadow-lg dark:hover:border-white/20 dark:hover:shadow-2xl dark:hover:shadow-black/60"
+                        className="group relative mb-2.5 sm:mb-4 break-inside-avoid overflow-hidden rounded-md bg-white shadow-sm transition-all duration-300 hover:border-zinc-300 hover:shadow-xl dark:border-white/10 dark:bg-zinc-900/80 dark:shadow-lg dark:hover:border-white/20 dark:hover:shadow-2xl dark:hover:shadow-black/60"
                       >
                         {/* Action buttons (Only for Admin) */}
                         {user && (
