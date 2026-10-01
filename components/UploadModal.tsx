@@ -5,6 +5,7 @@ import {
   CheckCircleIcon,
   ExclamationCircleIcon,
   PhotoIcon,
+  SparklesIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
@@ -21,6 +22,7 @@ interface UploadFileItem {
   status: "idle" | "uploading" | "success" | "error";
   errorMessage?: string;
   progress: number;
+  statusText?: string;
 }
 
 interface UploadModalProps {
@@ -37,6 +39,7 @@ export default function UploadModal({
   const [fileList, setFileList] = useState<UploadFileItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [autoCompress, setAutoCompress] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const d = new Date();
     const y = d.getFullYear();
@@ -138,18 +141,55 @@ export default function UploadModal({
     }
   };
 
-  const getMediaMeta = (
-    file: File
-  ): Promise<{ width: number; height: number; blurDataUrl: string | null }> => {
-    return new Promise((resolve) => {
-      const isImg = file.type.startsWith("image/");
-      const url = URL.createObjectURL(file);
-      const img = new window.Image();
-      img.onload = () => {
-        const w = img.naturalWidth || 1200;
-        const h = img.naturalHeight || 800;
-        let blurDataUrl: string | null = null;
-        if (isImg) {
+  const compressAndGetMediaMeta = async (
+    file: File,
+    shouldCompress: boolean = true
+  ): Promise<{
+    fileToUpload: File;
+    width: number;
+    height: number;
+    blurDataUrl: string | null;
+    isVideo: boolean;
+  }> => {
+    const isVideo = file.type.startsWith("video/");
+    if (isVideo) {
+      return new Promise((resolve) => {
+        const url = URL.createObjectURL(file);
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.onloadedmetadata = () => {
+          URL.revokeObjectURL(url);
+          resolve({
+            fileToUpload: file,
+            width: video.videoWidth || 1280,
+            height: video.videoHeight || 720,
+            blurDataUrl: null,
+            isVideo: true,
+          });
+        };
+        video.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve({
+            fileToUpload: file,
+            width: 1280,
+            height: 720,
+            blurDataUrl: null,
+            isVideo: true,
+          });
+        };
+        video.src = url;
+      });
+    }
+
+    // Nếu là GIF hoặc tắt nén: giữ nguyên file gốc
+    if (file.type === "image/gif" || !shouldCompress) {
+      return new Promise((resolve) => {
+        const url = URL.createObjectURL(file);
+        const img = new window.Image();
+        img.onload = () => {
+          const w = img.naturalWidth || 1200;
+          const h = img.naturalHeight || 800;
+          let blurDataUrl: string | null = null;
           try {
             const canvas = document.createElement("canvas");
             canvas.width = 10;
@@ -162,16 +202,239 @@ export default function UploadModal({
           } catch {
             // fallback
           }
-        }
+          URL.revokeObjectURL(url);
+          resolve({ fileToUpload: file, width: w, height: h, blurDataUrl, isVideo: false });
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve({ fileToUpload: file, width: 1200, height: 800, blurDataUrl: null, isVideo: false });
+        };
+        img.src = url;
+      });
+    }
+
+    // Nén ảnh thông minh phía client: Giới hạn 2048px (chuẩn 2K cực nét), JPEG chất lượng 85%
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file);
+      const img = new window.Image();
+      img.onload = async () => {
         URL.revokeObjectURL(url);
-        resolve({ width: w, height: h, blurDataUrl });
+        const origW = img.naturalWidth || 1200;
+        const origH = img.naturalHeight || 800;
+        const MAX_DIMENSION = 2048;
+
+        let targetW = origW;
+        let targetH = origH;
+        if (origW > MAX_DIMENSION || origH > MAX_DIMENSION) {
+          if (origW >= origH) {
+            targetW = MAX_DIMENSION;
+            targetH = Math.round((origH / origW) * MAX_DIMENSION);
+          } else {
+            targetH = MAX_DIMENSION;
+            targetW = Math.round((origW / origH) * MAX_DIMENSION);
+          }
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext("2d", { alpha: false });
+        if (ctx) {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, 0, 0, targetW, targetH);
+        }
+
+        let blurDataUrl: string | null = null;
+        try {
+          const blurCanvas = document.createElement("canvas");
+          blurCanvas.width = 10;
+          blurCanvas.height = Math.max(1, Math.round((targetH / targetW) * 10));
+          const blurCtx = blurCanvas.getContext("2d");
+          if (blurCtx) {
+            blurCtx.drawImage(canvas, 0, 0, blurCanvas.width, blurCanvas.height);
+            blurDataUrl = blurCanvas.toDataURL("image/jpeg", 0.7);
+          }
+        } catch {
+          // ignore
+        }
+
+        try {
+          const blob = await new Promise<Blob | null>((res) =>
+            canvas.toBlob((b) => res(b), "image/jpeg", 0.85)
+          );
+
+          if (blob && (blob.size < file.size || origW > MAX_DIMENSION || origH > MAX_DIMENSION)) {
+            const newName = file.name.replace(/\.[^/.]+$/, ".jpg");
+            const compressedFile = new File([blob], newName, { type: "image/jpeg" });
+            return resolve({
+              fileToUpload: compressedFile,
+              width: targetW,
+              height: targetH,
+              blurDataUrl,
+              isVideo: false,
+            });
+          }
+        } catch {
+          // fallback
+        }
+
+        resolve({
+          fileToUpload: file,
+          width: origW,
+          height: origH,
+          blurDataUrl,
+          isVideo: false,
+        });
       };
+
       img.onerror = () => {
         URL.revokeObjectURL(url);
-        resolve({ width: 1200, height: 800, blurDataUrl: null });
+        resolve({
+          fileToUpload: file,
+          width: 1200,
+          height: 800,
+          blurDataUrl: null,
+          isVideo: false,
+        });
       };
       img.src = url;
     });
+  };
+
+  const uploadSingleFile = async (item: UploadFileItem, index: number): Promise<boolean> => {
+    if (item.status === "success") return true;
+
+    // Giai đoạn 1: Nén và tối ưu hoá ảnh
+    setFileList((prev) =>
+      prev.map((f) =>
+        f.id === item.id
+          ? { ...f, status: "uploading", progress: 20, statusText: "Optimizing..." }
+          : f
+      )
+    );
+
+    const meta = await compressAndGetMediaMeta(item.file, autoCompress);
+
+    // Giai đoạn 2: Tải lên lưu trữ
+    setFileList((prev) =>
+      prev.map((f) =>
+        f.id === item.id
+          ? { ...f, status: "uploading", progress: 50, statusText: "Uploading..." }
+          : f
+      )
+    );
+
+    const fileToUpload = meta.fileToUpload;
+    const userTitle = item.title.trim();
+    const titleTag = encodeTitleSafe(userTitle);
+    const safeName = fileToUpload.name
+      .replace(/[^a-zA-Z0-9._-]/g, "_")
+      .toLowerCase();
+
+    let itemIso = new Date().toISOString();
+    let timestamp = Date.now();
+    if (selectedDate) {
+      const [y, m, d] = selectedDate.split("-").map(Number);
+      const localDate = new Date(y, m - 1, d, 12, 0, 0);
+      const itemDate = new Date(localDate.getTime() + index * 1000);
+      itemIso = itemDate.toISOString();
+      timestamp = itemDate.getTime();
+    }
+
+    const uploadPath = titleTag
+      ? `${timestamp}---${titleTag}---${safeName}`
+      : `${timestamp}---${safeName}`;
+
+    let uploadSucceeded = false;
+
+    if (supabase) {
+      const { error: storageError } = await supabase.storage
+        .from(DEFAULT_BUCKET)
+        .upload(uploadPath, fileToUpload, {
+          contentType: fileToUpload.type || (meta.isVideo ? "video/mp4" : "image/jpeg"),
+          upsert: true,
+        });
+
+      if (!storageError) {
+        uploadSucceeded = true;
+        const { data: urlData } = supabase.storage
+          .from(DEFAULT_BUCKET)
+          .getPublicUrl(uploadPath);
+
+        setFileList((prev) =>
+          prev.map((f) =>
+            f.id === item.id
+              ? { ...f, progress: 85, statusText: "Saving..." }
+              : f
+          )
+        );
+
+        try {
+          const { error: dbErr } = await supabase.from("media").insert({
+            title: userTitle,
+            storage_path: uploadPath,
+            url: urlData.publicUrl,
+            type: meta.isVideo ? "video" : "image",
+            width: meta.width,
+            height: meta.height,
+            blur_data_url: meta.blurDataUrl,
+            created_at: itemIso,
+          });
+          if (dbErr) {
+            console.warn("[UploadModal] Database insert notice:", dbErr.message);
+          }
+        } catch (dbEx) {
+          console.warn("[UploadModal] Database insert error:", dbEx);
+        }
+      } else {
+        console.warn("Direct upload error, trying API fallback:", storageError.message);
+      }
+    }
+
+    if (!uploadSucceeded) {
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          const res = reader.result as string;
+          resolve(res.split(",")[1]);
+        };
+        reader.onerror = reject;
+      });
+      reader.readAsDataURL(fileToUpload);
+      const base64Data = await base64Promise;
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: uploadPath,
+          fileBase64: base64Data,
+          contentType: fileToUpload.type || (meta.isVideo ? "video/mp4" : "image/jpeg"),
+          bucket: DEFAULT_BUCKET,
+          title: userTitle,
+          type: meta.isVideo ? "video" : "image",
+          width: meta.width,
+          height: meta.height,
+          blurDataUrl: meta.blurDataUrl,
+          createdAt: itemIso,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Upload failed");
+      }
+    }
+
+    setFileList((prev) =>
+      prev.map((f) =>
+        f.id === item.id
+          ? { ...f, status: "success", progress: 100, statusText: "Done" }
+          : f
+      )
+    );
+    return true;
   };
 
   const uploadAll = async () => {
@@ -180,139 +443,45 @@ export default function UploadModal({
     setIsUploading(true);
     let successCount = 0;
 
-    for (let i = 0; i < fileList.length; i++) {
-      const item = fileList[i];
-      if (item.status === "success") {
-        successCount++;
-        continue;
-      }
+    // Tải song song (Concurrency = 3) để tối ưu tối đa tốc độ mạng
+    const CONCURRENCY = 3;
+    let nextIndex = 0;
+    const itemsToUpload = fileList.map((item, index) => ({ item, index }));
 
-      setFileList((prev) =>
-        prev.map((f) => (f.id === item.id ? { ...f, status: "uploading", progress: 30 } : f))
-      );
-
-      try {
-        const file = item.file;
-        const userTitle = item.title.trim();
-        const titleTag = encodeTitleSafe(userTitle);
-        const safeName = file.name
-          .replace(/[^a-zA-Z0-9._-]/g, "_")
-          .toLowerCase();
-
-        // Calculate ISO date timestamp for the selected date
-        let itemIso = new Date().toISOString();
-        let timestamp = Date.now();
-        if (selectedDate) {
-          const [y, m, d] = selectedDate.split("-").map(Number);
-          const localDate = new Date(y, m - 1, d, 12, 0, 0);
-          const itemDate = new Date(localDate.getTime() + i * 1000);
-          itemIso = itemDate.toISOString();
-          timestamp = itemDate.getTime();
-        }
-
-        // Path format: timestamp---b64_base64url---safeName
-        const uploadPath = titleTag
-          ? `${timestamp}---${titleTag}---${safeName}`
-          : `${timestamp}---${safeName}`;
-
-        // Measure natural dimensions and tiny blur placeholder
-        const dims = await getMediaMeta(file);
-
-        let uploadSucceeded = false;
-
-        // Try direct browser client upload first (efficient, no size limits)
-        if (supabase) {
-          const { error: storageError } = await supabase.storage
-            .from(DEFAULT_BUCKET)
-            .upload(uploadPath, file, {
-              contentType: file.type || "image/jpeg",
-              upsert: true,
-            });
-
-          if (!storageError) {
-            uploadSucceeded = true;
-            const { data: urlData } = supabase.storage
-              .from(DEFAULT_BUCKET)
-              .getPublicUrl(uploadPath);
-
-            // Insert into Supabase database 'media' table with exact dimensions, blur placeholder and chosen date
-            try {
-              const { error: dbErr } = await supabase.from("media").insert({
-                title: userTitle,
-                storage_path: uploadPath,
-                url: urlData.publicUrl,
-                type: "image",
-                width: dims.width,
-                height: dims.height,
-                blur_data_url: dims.blurDataUrl,
-                created_at: itemIso,
-              });
-              if (dbErr) {
-                console.warn("[UploadModal] Database insert notice:", dbErr.message);
-              }
-            } catch (dbEx) {
-              console.warn("[UploadModal] Database insert error:", dbEx);
-            }
-          } else {
-            console.warn("Direct upload error, trying API fallback:", storageError.message);
+    const worker = async () => {
+      while (nextIndex < itemsToUpload.length) {
+        const currentIndex = nextIndex++;
+        const target = itemsToUpload[currentIndex];
+        try {
+          const ok = await uploadSingleFile(target.item, target.index);
+          if (ok) successCount++;
+        } catch (err: any) {
+          console.error("Upload error for file:", target.item.file.name, err);
+          let msg = err.message || "Upload failed";
+          if (
+            msg.includes("row-level security") ||
+            msg.includes("AccessDenied") ||
+            msg.includes("Unauthorized")
+          ) {
+            msg = "Admin login required to upload.";
           }
+          setFileList((prev) =>
+            prev.map((f) =>
+              f.id === target.item.id
+                ? { ...f, status: "error", errorMessage: msg, statusText: "Failed" }
+                : f
+            )
+          );
         }
-
-        // Fallback to API route if direct upload was not successful or client key missing
-        if (!uploadSucceeded) {
-          const reader = new FileReader();
-          const base64Promise = new Promise<string>((resolve, reject) => {
-            reader.onload = () => {
-              const res = reader.result as string;
-              resolve(res.split(",")[1]);
-            };
-            reader.onerror = reject;
-          });
-          reader.readAsDataURL(file);
-          const base64Data = await base64Promise;
-
-          const res = await fetch("/api/upload", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              filename: uploadPath,
-              fileBase64: base64Data,
-              contentType: file.type || "image/jpeg",
-              bucket: DEFAULT_BUCKET,
-              title: userTitle,
-              type: "image",
-              width: dims.width,
-              height: dims.height,
-              blurDataUrl: dims.blurDataUrl,
-              createdAt: itemIso,
-            }),
-          });
-
-          if (!res.ok) {
-            const errData = await res.json();
-            throw new Error(errData.error || "Upload failed");
-          }
-        }
-
-        setFileList((prev) =>
-          prev.map((f) => (f.id === item.id ? { ...f, status: "success", progress: 100 } : f))
-        );
-        successCount++;
-      } catch (err: any) {
-        console.error("Upload error for file:", item.file.name, err);
-        let msg = err.message || "Upload failed";
-        if (msg.includes("row-level security") || msg.includes("AccessDenied") || msg.includes("Unauthorized")) {
-          msg = "Admin login required to upload.";
-        }
-        setFileList((prev) =>
-          prev.map((f) =>
-            f.id === item.id
-              ? { ...f, status: "error", errorMessage: msg }
-              : f
-          )
-        );
       }
+    };
+
+    const workers = [];
+    const activeWorkers = Math.min(CONCURRENCY, itemsToUpload.length);
+    for (let w = 0; w < activeWorkers; w++) {
+      workers.push(worker());
     }
+    await Promise.all(workers);
 
     setIsUploading(false);
 
@@ -410,6 +579,33 @@ export default function UploadModal({
                 />
               </div>
 
+              {/* Smart Compression Option */}
+              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                    <SparklesIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-semibold text-white">
+                      Smart 2K Compression
+                    </span>
+                    <p className="text-[11px] text-zinc-400">
+                      Auto-resize to sharp 2K quality for 10x faster upload & smaller storage
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    checked={autoCompress}
+                    disabled={isUploading}
+                    onChange={(e) => setAutoCompress(e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <div className="h-6 w-11 rounded-full bg-zinc-700 transition peer-checked:bg-blue-600 after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-focus:outline-none" />
+                </label>
+              </div>
+
               {/* Dropzone */}
               <div
                 onDragOver={handleDragOver}
@@ -492,11 +688,25 @@ export default function UploadModal({
                               placeholder="Enter title..."
                               className="w-full rounded-md border border-white/15 bg-white/5 px-2.5 py-1.5 text-base sm:text-xs text-white placeholder-white/30 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition"
                             />
-                            <div className="mt-1 flex items-center gap-2 text-[10px] text-white/40">
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-white/40">
                               <span className="truncate max-w-[180px]">{item.file.name}</span>
                               <span>&bull;</span>
                               <span>{formatFileSize(item.file.size)}</span>
+                              {item.statusText && (
+                                <>
+                                  <span>&bull;</span>
+                                  <span className="text-blue-400 font-medium">{item.statusText}</span>
+                                </>
+                              )}
                             </div>
+                            {item.status === "uploading" && (
+                              <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/10">
+                                <div
+                                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-300"
+                                  style={{ width: `${item.progress}%` }}
+                                />
+                              </div>
+                            )}
                           </div>
                         </div>
 
