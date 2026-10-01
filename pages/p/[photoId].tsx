@@ -39,7 +39,11 @@ const PhotoPage: NextPage<{ currentPhoto: ImageProps }> = ({
 export default PhotoPage;
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
-  const images = await getResults(true);
+  context.res.setHeader(
+    "Cache-Control",
+    "public, s-maxage=60, stale-while-revalidate=300"
+  );
+  const images = await getResults(false);
   const currentPhoto = images.find(
     (img) => img.id === Number(context.params?.photoId)
   );

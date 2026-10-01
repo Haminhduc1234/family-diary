@@ -10,7 +10,12 @@ export default async function handler(
   }
 
   try {
-    const images = await getResults(true);
+    const force = req.query.refresh === "true";
+    const images = await getResults(force);
+    res.setHeader(
+      "Cache-Control",
+      "public, s-maxage=30, stale-while-revalidate=120"
+    );
     return res.status(200).json({ images });
   } catch (error: any) {
     console.error("Failed to fetch media:", error);

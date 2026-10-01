@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { DEFAULT_BUCKET, deleteMediaFiles } from "../../utils/supabaseStorage";
 import { getSupabaseServerClient } from "../../utils/supabase";
+import { clearMediaCache } from "../../utils/cachedImages";
 
 export default async function handler(
   req: NextApiRequest,
@@ -29,6 +30,7 @@ export default async function handler(
     }
 
     const result = await deleteMediaFiles(targets, bucket || DEFAULT_BUCKET);
+    clearMediaCache();
     return res.status(200).json({ success: true, data: result });
   } catch (error: any) {
     console.error("Delete error:", error);

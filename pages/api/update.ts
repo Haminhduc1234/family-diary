@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getSupabaseServerClient } from "../../utils/supabase";
+import { clearMediaCache } from "../../utils/cachedImages";
 
 export default async function handler(
   req: NextApiRequest,
@@ -43,6 +44,7 @@ export default async function handler(
       throw error;
     }
 
+    clearMediaCache();
     return res.status(200).json({ success: true, data });
   } catch (error: any) {
     console.error("Update error:", error);

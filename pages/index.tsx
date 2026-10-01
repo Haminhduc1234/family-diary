@@ -49,7 +49,6 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
 
   useEffect(() => {
     setMediaList(images);
-    refreshMedia();
   }, [images]);
 
   // Supabase Auth listener
@@ -301,7 +300,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
         {/* Timeline Container */}
         {timelineGroups.length > 0 ? (
           <div className="relative border-l border-zinc-200/80 ml-2.5 sm:ml-6 pl-4 sm:pl-8 space-y-10 sm:space-y-12 dark:border-white/15">
-            {timelineGroups.map((group) => (
+            {timelineGroups.map((group, groupIndex) => (
               <section key={group.dateKey} className="relative">
                 {/* Timeline node icon */}
                 <div className="absolute -left-[29px] sm:-left-[45px] top-[2px] flex h-6 w-6 items-center justify-center rounded-full border border-blue-400/40 bg-white shadow-md shadow-blue-500/10 dark:bg-zinc-900 dark:shadow-blue-500/20">
@@ -321,7 +320,9 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
 
                 {/* Media Grid for this date (2 columns on mobile, maintaining original aspect ratio) */}
                 <div className="columns-2 gap-2.5 sm:gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
-                  {group.items.map(({ id, url, blurDataUrl, type, title, rawName, formattedDate, width, height, createdAt }) => (
+                  {group.items.map(({ id, url, blurDataUrl, type, title, rawName, formattedDate, width, height, createdAt }, itemIndex) => {
+                    const isAboveTheFold = groupIndex === 0 && itemIndex < 4;
+                    return (
                     <div
                       key={id}
                       className="group relative mb-2.5 sm:mb-4 break-inside-avoid overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-sm transition-all duration-300 hover:border-zinc-300 hover:shadow-xl dark:border-white/10 dark:bg-zinc-900/80 dark:shadow-lg dark:hover:border-white/20 dark:hover:shadow-2xl dark:hover:shadow-black/60"
@@ -374,7 +375,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                           <div className="relative w-full">
                             <video
                               src={`${url}#t=0.001`}
-                              preload="metadata"
+                              preload="none"
                               muted
                               playsInline
                               style={{
@@ -410,6 +411,8 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                             src={url}
                             width={width || 720}
                             height={height || 480}
+                            priority={isAboveTheFold}
+                            loading={isAboveTheFold ? "eager" : "lazy"}
                             style={{
                               aspectRatio:
                                 width && height ? `${width} / ${height}` : "auto",
@@ -430,7 +433,8 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                         )}
                       </Link>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
             ))}
@@ -531,8 +535,14 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
 
 export default Home;
 
-export const getServerSideProps: GetServerSideProps = async () => {
-  const images = await getResults(true);
+export const getServerSideProps: GetServerSideProps = async ({ res }) => {
+  // Cache response on Edge CDN for fast instant delivery (60s fresh, 5m stale-while-revalidate)
+  res.setHeader(
+    "Cache-Control",
+    "public, s-maxage=60, stale-while-revalidate=300"
+  );
+
+  const images = await getResults(false);
   return {
     props: {
       images,

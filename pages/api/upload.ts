@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import sharp from "sharp";
 import { DEFAULT_BUCKET, uploadMediaFile } from "../../utils/supabaseStorage";
 import { getSupabaseServerClient } from "../../utils/supabase";
+import { clearMediaCache } from "../../utils/cachedImages";
 
 export const config = {
   api: {
@@ -62,6 +63,20 @@ export default async function handler(
           }
         }
 
+        let blurDataUrl: string | null = req.body.blurDataUrl || null;
+        if (!isVideo && !blurDataUrl) {
+          try {
+            const placeholder = await sharp(buffer)
+              .rotate()
+              .resize(10)
+              .jpeg({ quality: 70 })
+              .toBuffer();
+            blurDataUrl = `data:image/jpeg;base64,${placeholder.toString("base64")}`;
+          } catch {
+            // fallback
+          }
+        }
+
         const itemCreatedAt = createdAt || created_at || new Date().toISOString();
 
         const { error: dbError } = await serverClient.from("media").insert({
@@ -71,6 +86,7 @@ export default async function handler(
           type: isVideo ? "video" : "image",
           width: finalWidth,
           height: finalHeight,
+          blur_data_url: blurDataUrl,
           created_at: itemCreatedAt,
         });
         if (dbError) {
@@ -81,6 +97,7 @@ export default async function handler(
       }
     }
 
+    clearMediaCache();
     return res.status(200).json({ success: true, data: result });
   } catch (error: any) {
     console.error("Upload error:", error);

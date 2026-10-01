@@ -4,6 +4,13 @@ import { DEFAULT_BUCKET, fetchStorageFiles, getMediaPublicUrl } from "./supabase
 import type { ImageProps, MediaType } from "./types";
 
 let cached: ImageProps[] | null = null;
+let lastFetchTime = 0;
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds memory cache
+
+export function clearMediaCache() {
+  cached = null;
+  lastFetchTime = 0;
+}
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "avif", "gif"]);
 const VIDEO_EXTENSIONS = new Set(["mp4", "webm", "mov", "m4v", "ogg"]);
@@ -135,9 +142,11 @@ async function describeImage(
 }
 
 export default async function getResults(forceRefresh: boolean = false): Promise<ImageProps[]> {
+  const now = Date.now();
   if (forceRefresh) {
     cached = null;
-  } else if (cached) {
+    lastFetchTime = 0;
+  } else if (cached && now - lastFetchTime < CACHE_TTL_MS) {
     return cached;
   }
 
@@ -174,13 +183,39 @@ export default async function getResults(forceRefresh: boolean = false): Promise
 
             if (!isVideo) {
               if (!width || !height || !blurDataUrl) {
-                const meta = await describeImage(row.storage_path, row.url, bucket);
-                if (!width || !height) {
-                  width = meta.width;
-                  height = meta.height;
-                }
-                if (!blurDataUrl) {
-                  blurDataUrl = meta.blurDataUrl;
+                // If dimensions already exist, don't stall request waiting for full image download
+                if (width && height) {
+                  blurDataUrl = DEFAULT_IMAGE_BLUR_DATA_URL;
+                  // Asynchronously compute blur in background to update DB
+                  describeImage(row.storage_path, row.url, bucket).then((meta) => {
+                    if (meta.blurDataUrl && dbClient) {
+                      dbClient
+                        .from("media")
+                        .update({ blur_data_url: meta.blurDataUrl })
+                        .eq("id", row.id)
+                        .then(() => {});
+                    }
+                  }).catch(() => {});
+                } else {
+                  const meta = await describeImage(row.storage_path, row.url, bucket);
+                  if (!width || !height) {
+                    width = meta.width;
+                    height = meta.height;
+                  }
+                  if (!blurDataUrl) {
+                    blurDataUrl = meta.blurDataUrl;
+                  }
+                  if (dbClient) {
+                    dbClient
+                      .from("media")
+                      .update({
+                        width,
+                        height,
+                        blur_data_url: blurDataUrl,
+                      })
+                      .eq("id", row.id)
+                      .then(() => {});
+                  }
                 }
               }
             } else {
@@ -203,6 +238,7 @@ export default async function getResults(forceRefresh: boolean = false): Promise
             };
           })
         );
+        lastFetchTime = Date.now();
         return cached;
       }
     } catch (e) {
@@ -265,6 +301,7 @@ export default async function getResults(forceRefresh: boolean = false): Promise
       })
     );
 
+    lastFetchTime = Date.now();
     return cached;
   } catch (error) {
     console.error("[cachedImages] Error listing files from Supabase Storage:", error);

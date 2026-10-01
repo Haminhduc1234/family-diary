@@ -138,21 +138,37 @@ export default function UploadModal({
     }
   };
 
-  const getMediaDimensions = (
+  const getMediaMeta = (
     file: File
-  ): Promise<{ width: number; height: number }> => {
+  ): Promise<{ width: number; height: number; blurDataUrl: string | null }> => {
     return new Promise((resolve) => {
+      const isImg = file.type.startsWith("image/");
       const url = URL.createObjectURL(file);
       const img = new window.Image();
       img.onload = () => {
         const w = img.naturalWidth || 1200;
         const h = img.naturalHeight || 800;
+        let blurDataUrl: string | null = null;
+        if (isImg) {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = 10;
+            canvas.height = Math.max(1, Math.round((h / w) * 10));
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              blurDataUrl = canvas.toDataURL("image/jpeg", 0.7);
+            }
+          } catch {
+            // fallback
+          }
+        }
         URL.revokeObjectURL(url);
-        resolve({ width: w, height: h });
+        resolve({ width: w, height: h, blurDataUrl });
       };
       img.onerror = () => {
         URL.revokeObjectURL(url);
-        resolve({ width: 1200, height: 800 });
+        resolve({ width: 1200, height: 800, blurDataUrl: null });
       };
       img.src = url;
     });
@@ -199,8 +215,8 @@ export default function UploadModal({
           ? `${timestamp}---${titleTag}---${safeName}`
           : `${timestamp}---${safeName}`;
 
-        // Measure natural dimensions of the media file
-        const dims = await getMediaDimensions(file);
+        // Measure natural dimensions and tiny blur placeholder
+        const dims = await getMediaMeta(file);
 
         let uploadSucceeded = false;
 
@@ -219,7 +235,7 @@ export default function UploadModal({
               .from(DEFAULT_BUCKET)
               .getPublicUrl(uploadPath);
 
-            // Insert into Supabase database 'media' table with exact dimensions and chosen date
+            // Insert into Supabase database 'media' table with exact dimensions, blur placeholder and chosen date
             try {
               const { error: dbErr } = await supabase.from("media").insert({
                 title: userTitle,
@@ -228,6 +244,7 @@ export default function UploadModal({
                 type: "image",
                 width: dims.width,
                 height: dims.height,
+                blur_data_url: dims.blurDataUrl,
                 created_at: itemIso,
               });
               if (dbErr) {
@@ -266,6 +283,7 @@ export default function UploadModal({
               type: "image",
               width: dims.width,
               height: dims.height,
+              blurDataUrl: dims.blurDataUrl,
               createdAt: itemIso,
             }),
           });
