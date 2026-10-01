@@ -5,7 +5,7 @@ import type { ImageProps, MediaType } from "./types";
 
 let cached: ImageProps[] | null = null;
 let lastFetchTime = 0;
-const CACHE_TTL_MS = 60 * 1000; // 60 seconds memory cache
+const CACHE_TTL_MS = 10 * 1000; // 10 seconds memory cache
 
 export function clearMediaCache() {
   cached = null;

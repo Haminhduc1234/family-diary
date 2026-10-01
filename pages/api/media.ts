@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import getResults from "../../utils/cachedImages";
+import getResults, { clearMediaCache } from "../../utils/cachedImages";
 
 export default async function handler(
   req: NextApiRequest,
@@ -11,11 +11,16 @@ export default async function handler(
 
   try {
     const force = req.query.refresh === "true";
+    if (force) {
+      clearMediaCache();
+      res.setHeader("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate");
+    } else {
+      res.setHeader(
+        "Cache-Control",
+        "public, s-maxage=5, stale-while-revalidate=15"
+      );
+    }
     const images = await getResults(force);
-    res.setHeader(
-      "Cache-Control",
-      "public, s-maxage=30, stale-while-revalidate=120"
-    );
     return res.status(200).json({ images });
   } catch (error: any) {
     console.error("Failed to fetch media:", error);

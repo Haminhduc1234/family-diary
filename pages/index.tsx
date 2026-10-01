@@ -59,6 +59,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
 
   useEffect(() => {
     setMediaList(images);
+    refreshMedia(false);
   }, [images]);
 
   // Supabase Auth listener
@@ -121,9 +122,9 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
     }));
   }, [mediaList]);
 
-  const refreshMedia = async () => {
+  const refreshMedia = async (force: boolean = false) => {
     try {
-      const res = await fetch("/api/media");
+      const res = await fetch(`/api/media${force ? "?refresh=true" : ""}`);
       if (res.ok) {
         const data = await res.json();
         if (data.images) {
@@ -169,7 +170,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
       setMediaList((prev) => prev.filter((item) => item.id !== deletingItem.id));
       setDeletingItem(null);
       showToast("Item deleted successfully.");
-      await refreshMedia();
+      await refreshMedia(true);
     } catch (err: any) {
       alert("Failed to delete item: " + (err.message || "Unknown error"));
     } finally {
@@ -195,7 +196,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
     setMediaList((prev) => prev.filter((item) => item.id !== id));
     router.push("/", undefined, { shallow: true });
     showToast("Item deleted successfully.");
-    await refreshMedia();
+    await refreshMedia(true);
   };
 
   return (
@@ -469,7 +470,8 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
           onClose={() => setIsUploadOpen(false)}
           onUploadSuccess={() => {
             showToast("Upload completed successfully!");
-            refreshMedia();
+            refreshMedia(true);
+            router.replace(router.asPath, undefined, { scroll: false });
           }}
         />
 
@@ -492,7 +494,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
               )
             );
             showToast("Updated successfully!");
-            refreshMedia();
+            refreshMedia(true);
           }}
         />
 
@@ -525,10 +527,10 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
 export default Home;
 
 export const getServerSideProps: GetServerSideProps = async ({ res }) => {
-  // Cache response on Edge CDN for fast instant delivery (60s fresh, 5m stale-while-revalidate)
+  // Allow immediate refresh on reload while keeping short micro-cache for spikes
   res.setHeader(
     "Cache-Control",
-    "public, s-maxage=60, stale-while-revalidate=300"
+    "public, s-maxage=1, stale-while-revalidate=9"
   );
 
   const images = await getResults(false);

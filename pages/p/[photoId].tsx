@@ -41,7 +41,7 @@ export default PhotoPage;
 export const getServerSideProps: GetServerSideProps = async (context) => {
   context.res.setHeader(
     "Cache-Control",
-    "public, s-maxage=60, stale-while-revalidate=300"
+    "public, s-maxage=1, stale-while-revalidate=9"
   );
   const images = await getResults(false);
   const currentPhoto = images.find(

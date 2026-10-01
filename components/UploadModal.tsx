@@ -486,6 +486,11 @@ export default function UploadModal({
     setIsUploading(false);
 
     if (successCount > 0) {
+      try {
+        await fetch("/api/media?refresh=true");
+      } catch (err) {
+        console.warn("Failed to invalidate cache after upload:", err);
+      }
       onUploadSuccess();
       setTimeout(() => {
         if (successCount === fileList.length) {
