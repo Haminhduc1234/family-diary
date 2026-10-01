@@ -527,7 +527,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
       {/* Footer */}
       <footer className="mt-20 border-t border-zinc-200/80 bg-zinc-100/50 py-8 px-4 text-center text-xs text-zinc-500 dark:border-white/10 dark:bg-black/40 dark:text-zinc-400">
         <div className="mx-auto flex max-w-7xl items-center justify-center">
-          <p>Family Diary &bull; Cherishing every moment</p>
+          <p>Đức Trang Linh &bull; Cherishing every moment</p>
         </div>
       </footer>
     </>
