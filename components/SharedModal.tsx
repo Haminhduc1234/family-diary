@@ -408,7 +408,7 @@ export default function SharedModal({
                   )}
                 </button>
                 {currentImage.title && (
-                  <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-medium text-white/90 backdrop-blur-lg max-w-[250px] xs:max-w-[300px] sm:max-w-md">
+                  <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-medium text-white/90 backdrop-blur-lg max-w-[200px] xs:max-w-[250px] sm:max-w-md">
                     {currentImage.title}
                   </span>
                 )}
@@ -417,9 +417,8 @@ export default function SharedModal({
               {/* Zoom % indicator centered below image when zoomed */}
               {currentImage.type !== "video" && zoomScale > 1 && (
                 <div
-                  className={`pointer-events-auto absolute left-1/2 -translate-x-1/2 z-40 flex items-center gap-2.5 rounded-full border border-white/20 bg-black/80 px-3.5 py-1.5 text-xs font-medium text-white shadow-2xl backdrop-blur-xl animate-fade-in ${
-                    navigation ? "bottom-24 sm:bottom-28" : "bottom-6 sm:bottom-8"
-                  }`}
+                  className={`pointer-events-auto absolute left-1/2 -translate-x-1/2 z-40 flex items-center gap-2.5 rounded-full border border-white/20 bg-black/80 px-3.5 py-1.5 text-xs font-medium text-white shadow-2xl backdrop-blur-xl animate-fade-in ${navigation ? "bottom-24 sm:bottom-28" : "bottom-6 sm:bottom-8"
+                    }`}
                 >
                   <span className="font-semibold text-white/95">
                     {Math.round(zoomScale * 100)}%
