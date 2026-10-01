@@ -25,6 +25,16 @@ import type { ImageProps } from "../utils/types";
 import { useLastViewedPhoto } from "../utils/useLastViewedPhoto";
 import { supabase } from "../utils/supabase";
 
+const VIETNAMESE_WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+
+function formatTimelineDate(date: Date): string {
+  const weekday = VIETNAMESE_WEEKDAYS[date.getDay()];
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = String(date.getFullYear());
+  return `${weekday}, ${day}/${month}/${year}`;
+}
+
 interface TimelineGroup {
   dateKey: string;
   displayDate: string;
@@ -91,12 +101,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
             const m = String(d.getMonth() + 1).padStart(2, "0");
             const day = String(d.getDate()).padStart(2, "0");
             dateKey = `${y}-${m}-${day}`;
-            displayDate = d.toLocaleDateString("en-US", {
-              weekday: "short",
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            });
+            displayDate = formatTimelineDate(d);
           }
         } catch {
           // fallback
@@ -323,116 +328,116 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                   {group.items.map(({ id, url, blurDataUrl, type, title, rawName, formattedDate, width, height, createdAt }, itemIndex) => {
                     const isAboveTheFold = groupIndex === 0 && itemIndex < 4;
                     return (
-                    <div
-                      key={id}
-                      className="group relative mb-2.5 sm:mb-4 break-inside-avoid overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-sm transition-all duration-300 hover:border-zinc-300 hover:shadow-xl dark:border-white/10 dark:bg-zinc-900/80 dark:shadow-lg dark:hover:border-white/20 dark:hover:shadow-2xl dark:hover:shadow-black/60"
-                    >
-                      {/* Action buttons (Only for Admin) */}
-                      {user && (
-                        <div className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 z-30 flex items-center gap-1 sm:gap-1.5 opacity-0 transition group-hover:opacity-100">
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setEditingItem({ id, url, blurDataUrl, type, title, rawName, width, height, createdAt, formattedDate });
-                            }}
-                            className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-black/70 text-white/80 backdrop-blur-md transition hover:bg-blue-600 hover:text-white"
-                            title="Edit title & date"
-                          >
-                            <PencilSquareIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setDeletingItem({ id, url, blurDataUrl, type, title, rawName, width, height });
-                            }}
-                            className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-black/70 text-white/80 backdrop-blur-md transition hover:bg-red-600 hover:text-white"
-                            title="Delete"
-                          >
-                            <TrashIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Video indicator tag in top-left */}
-                      {type === "video" && (
-                        <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 z-20 flex items-center gap-1 rounded bg-black/60 px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-medium text-white backdrop-blur-md">
-                          <FilmIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-blue-400" />
-                          <span>Video</span>
-                        </div>
-                      )}
-
-                      {/* Media container */}
-                      <Link
-                        href={`/?photoId=${id}`}
-                        as={`/p/${id}`}
-                        ref={id === Number(lastViewedPhoto) ? lastViewedPhotoRef : null}
-                        shallow
-                        className="relative block w-full cursor-zoom-in overflow-hidden"
+                      <div
+                        key={id}
+                        className="group relative mb-2.5 sm:mb-4 break-inside-avoid overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-sm transition-all duration-300 hover:border-zinc-300 hover:shadow-xl dark:border-white/10 dark:bg-zinc-900/80 dark:shadow-lg dark:hover:border-white/20 dark:hover:shadow-2xl dark:hover:shadow-black/60"
                       >
-                        {type === "video" ? (
-                          <div className="relative w-full">
-                            <video
-                              src={`${url}#t=0.001`}
-                              preload="none"
-                              muted
-                              playsInline
-                              style={{
-                                aspectRatio:
-                                  width && height ? `${width} / ${height}` : "16 / 9",
+                        {/* Action buttons (Only for Admin) */}
+                        {user && (
+                          <div className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 z-30 flex items-center gap-1 sm:gap-1.5 opacity-0 transition group-hover:opacity-100">
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEditingItem({ id, url, blurDataUrl, type, title, rawName, width, height, createdAt, formattedDate });
                               }}
-                              className="w-full h-auto block transform brightness-90 transition duration-300 will-change-transform group-hover:scale-[1.02] group-hover:brightness-105"
-                            />
-                            {/* Video Play Badge overlay */}
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <div className="flex h-8 w-8 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition duration-300 group-hover:scale-110 group-hover:bg-blue-600 shadow-lg">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  viewBox="0 0 24 24"
-                                  fill="currentColor"
-                                  className="h-4 w-4 sm:h-5 sm:w-5 ml-0.5"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
+                              className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-black/70 text-white/80 backdrop-blur-md transition hover:bg-blue-600 hover:text-white"
+                              title="Edit title & date"
+                            >
+                              <PencilSquareIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDeletingItem({ id, url, blurDataUrl, type, title, rawName, width, height });
+                              }}
+                              className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-black/70 text-white/80 backdrop-blur-md transition hover:bg-red-600 hover:text-white"
+                              title="Delete"
+                            >
+                              <TrashIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Video indicator tag in top-left */}
+                        {type === "video" && (
+                          <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 z-20 flex items-center gap-1 rounded bg-black/60 px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-medium text-white backdrop-blur-md">
+                            <FilmIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-blue-400" />
+                            <span>Video</span>
+                          </div>
+                        )}
+
+                        {/* Media container */}
+                        <Link
+                          href={`/?photoId=${id}`}
+                          as={`/p/${id}`}
+                          ref={id === Number(lastViewedPhoto) ? lastViewedPhotoRef : null}
+                          shallow
+                          className="relative block w-full cursor-zoom-in overflow-hidden"
+                        >
+                          {type === "video" ? (
+                            <div className="relative w-full">
+                              <video
+                                src={`${url}#t=0.001`}
+                                preload="none"
+                                muted
+                                playsInline
+                                style={{
+                                  aspectRatio:
+                                    width && height ? `${width} / ${height}` : "16 / 9",
+                                }}
+                                className="w-full h-auto block transform brightness-90 transition duration-300 will-change-transform group-hover:scale-[1.02] group-hover:brightness-105"
+                              />
+                              {/* Video Play Badge overlay */}
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="flex h-8 w-8 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition duration-300 group-hover:scale-110 group-hover:bg-blue-600 shadow-lg">
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    className="h-4 w-4 sm:h-5 sm:w-5 ml-0.5"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ) : (
-                          <Image
-                            alt={title || "Family photo"}
-                            className="w-full h-auto block transform brightness-95 transition duration-300 will-change-transform group-hover:scale-[1.02] group-hover:brightness-105"
-                            placeholder="blur"
-                            blurDataURL={blurDataUrl}
-                            src={url}
-                            width={width || 720}
-                            height={height || 480}
-                            priority={isAboveTheFold}
-                            loading={isAboveTheFold ? "eager" : "lazy"}
-                            style={{
-                              aspectRatio:
-                                width && height ? `${width} / ${height}` : "auto",
-                            }}
-                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
-                          />
-                        )}
+                          ) : (
+                            <Image
+                              alt={title || "Family photo"}
+                              className="w-full h-auto block transform brightness-95 transition duration-300 will-change-transform group-hover:scale-[1.02] group-hover:brightness-105"
+                              placeholder="blur"
+                              blurDataURL={blurDataUrl}
+                              src={url}
+                              width={width || 720}
+                              height={height || 480}
+                              priority={isAboveTheFold}
+                              loading={isAboveTheFold ? "eager" : "lazy"}
+                              style={{
+                                aspectRatio:
+                                  width && height ? `${width} / ${height}` : "auto",
+                              }}
+                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
+                            />
+                          )}
 
-                        {/* Title Overlay: Hiển thị ngay trên ảnh góc nhỏ phía dưới bên trái với hiệu ứng nền mờ dần */}
-                        {(Boolean(title && title.trim()) || formattedDate) && (
-                          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2.5 sm:px-3 pt-8 pb-2 sm:pt-10 sm:pb-2.5 flex flex-col justify-end">
-                            {title && title.trim() ? (
-                              <span className="text-[10px] sm:text-[12px] text-white/70 font-medium block truncate mt-0.5">
-                                {title}
-                              </span>
-                            ) : null}
-                          </div>
-                        )}
-                      </Link>
-                    </div>
+                          {/* Title Overlay: Hiển thị ngay trên ảnh góc nhỏ phía dưới bên trái với hiệu ứng nền mờ dần */}
+                          {(Boolean(title && title.trim()) || formattedDate) && (
+                            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2.5 sm:px-3 pt-8 pb-2 sm:pt-10 sm:pb-2.5 flex flex-col justify-end">
+                              {title && title.trim() ? (
+                                <span className="text-[10px] sm:text-[12px] text-white/70 font-medium block truncate mt-0.5">
+                                  {title}
+                                </span>
+                              ) : null}
+                            </div>
+                          )}
+                        </Link>
+                      </div>
                     );
                   })}
                 </div>
