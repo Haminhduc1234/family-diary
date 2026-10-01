@@ -230,26 +230,10 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
           <div className="flex items-center justify-between gap-3 sm:gap-4">
             {/* Brand Logo & Title */}
             <div className="flex items-center gap-2.5 sm:gap-4 shrink-0 min-w-0">
-              <div className="relative flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-sky-400 p-[1.5px] shadow-lg shadow-blue-500/20 group">
-                <div className="flex h-full w-full items-center justify-center rounded-[14px] bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl transition-all duration-300 group-hover:bg-transparent">
-                  <svg
-                    className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400 group-hover:text-white transition-colors duration-300"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-                  </svg>
-                </div>
-              </div>
-
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight whitespace-nowrap bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-100 dark:to-zinc-300 bg-clip-text text-transparent">
-                    Family Diary
+                    My family memories
                   </h1>
                   {mediaList.length > 0 && (
                     <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">
@@ -258,7 +242,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-normal whitespace-nowrap truncate max-w-[140px] sm:max-w-none">
+                <p className="mt-0.5 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-normal whitespace-nowrap truncate max-w-[240px] sm:max-w-none">
                   A visual timeline of precious memories
                 </p>
               </div>
