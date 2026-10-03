@@ -34,19 +34,19 @@ class MyDocument extends Document {
               __html: `
                 try {
                   var t = localStorage.getItem('theme');
-                  if (t === 'light') {
-                    document.documentElement.classList.remove('dark');
-                  } else {
+                  if (t === 'dark') {
                     document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
                   }
                 } catch (e) {
-                  document.documentElement.classList.add('dark');
+                  document.documentElement.classList.remove('dark');
                 }
               `,
             }}
           />
         </Head>
-        <body className="bg-zinc-50 text-zinc-900 antialiased dark:bg-black dark:text-white transition-colors duration-200">
+        <body className="bg-slate-50/70 text-zinc-900 antialiased dark:bg-[#090a0f] dark:text-white transition-colors duration-200">
           <Main />
           <NextScript />
         </body>

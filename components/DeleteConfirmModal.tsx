@@ -24,7 +24,7 @@ export default function DeleteConfirmModal({
           static
           open={isOpen}
           onClose={isDeleting ? () => {} : onClose}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
         >
           {/* Backdrop */}
           <Dialog.Overlay

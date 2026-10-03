@@ -35,8 +35,11 @@ export default function SharedModal({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Zoom & Pan state
-  const [zoomScale, setZoomScale] = useState(1);
+  const currentImage = images ? images[index] : currentPhoto;
+
+  // Zoom & Pan state (default 150% for photos, 100% for videos)
+  const defaultZoom = currentImage?.type === "video" ? 1 : 1.5;
+  const [zoomScale, setZoomScale] = useState(defaultZoom);
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const dragStartRef = useRef({ startX: 0, startY: 0, posX: 0, posY: 0 });
@@ -44,12 +47,10 @@ export default function SharedModal({
   const lastTapRef = useRef<number>(0);
   const imageContainerRef = useRef<HTMLDivElement>(null);
 
-  const currentImage = images ? images[index] : currentPhoto;
-
   useEffect(() => {
-    setZoomScale(1);
+    setZoomScale(currentImage?.type === "video" ? 1 : 1.5);
     setPanPosition({ x: 0, y: 0 });
-  }, [index]);
+  }, [index, currentImage?.type]);
 
   const handleZoomIn = (step = 0.5) => {
     setZoomScale((prev) => {
@@ -68,24 +69,29 @@ export default function SharedModal({
   };
 
   const handleResetZoom = () => {
-    setZoomScale(1);
+    if (zoomScale === 1.5) {
+      setZoomScale(1);
+    } else {
+      setZoomScale(1.5);
+    }
     setPanPosition({ x: 0, y: 0 });
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
-    if (currentImage.type === "video") return;
+    if (currentImage?.type === "video") return;
     e.preventDefault();
     e.stopPropagation();
     if (zoomScale > 1) {
-      handleResetZoom();
+      setZoomScale(1);
+      setPanPosition({ x: 0, y: 0 });
     } else {
-      setZoomScale(2);
+      setZoomScale(1.5);
       setPanPosition({ x: 0, y: 0 });
     }
   };
 
   const handleWheel = (e: React.WheelEvent) => {
-    if (currentImage.type === "video") return;
+    if (currentImage?.type === "video") return;
     if (e.deltaY < 0) {
       handleZoomIn(0.25);
     } else {
@@ -94,7 +100,7 @@ export default function SharedModal({
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (zoomScale <= 1 || currentImage.type === "video") return;
+    if (zoomScale <= 1 || currentImage?.type === "video") return;
     e.preventDefault();
     setIsPanning(true);
     dragStartRef.current = {
@@ -120,14 +126,15 @@ export default function SharedModal({
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (currentImage.type === "video") return;
+    if (currentImage?.type === "video") return;
     if (e.touches.length === 1) {
       const now = Date.now();
       if (now - lastTapRef.current < 300) {
         if (zoomScale > 1) {
-          handleResetZoom();
+          setZoomScale(1);
+          setPanPosition({ x: 0, y: 0 });
         } else {
-          setZoomScale(2);
+          setZoomScale(1.5);
           setPanPosition({ x: 0, y: 0 });
         }
         lastTapRef.current = 0;
@@ -306,133 +313,88 @@ export default function SharedModal({
         <div className="absolute inset-0 mx-auto flex max-w-7xl items-center justify-center pointer-events-none">
           {/* Buttons overlay */}
           <div className="relative h-full w-full pointer-events-none">
-              {navigation && images && (
-                <>
-                  {index > 0 && (
-                    <button
-                      className="pointer-events-auto absolute left-3 top-[calc(50%-16px)] rounded-full bg-black/50 p-2 sm:p-3 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white focus:outline-none"
-                      style={{ transform: "translate3d(0, 0, 0)" }}
-                      onClick={() => changePhotoId(index - 1)}
-                    >
-                      <ChevronLeftIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-                    </button>
-                  )}
-                  {index + 1 < images.length && (
-                    <button
-                      className="pointer-events-auto absolute right-3 top-[calc(50%-16px)] rounded-full bg-black/50 p-2 sm:p-3 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white focus:outline-none"
-                      style={{ transform: "translate3d(0, 0, 0)" }}
-                      onClick={() => changePhotoId(index + 1)}
-                    >
-                      <ChevronRightIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-                    </button>
-                  )}
-                </>
+            {navigation && images && (
+              <>
+                {index > 0 && (
+                  <button
+                    className="pointer-events-auto absolute left-3 top-[calc(50%-16px)] rounded-full bg-black/50 p-2 sm:p-3 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white focus:outline-none"
+                    style={{ transform: "translate3d(0, 0, 0)" }}
+                    onClick={() => changePhotoId(index - 1)}
+                  >
+                    <ChevronLeftIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                  </button>
+                )}
+                {index + 1 < images.length && (
+                  <button
+                    className="pointer-events-auto absolute right-3 top-[calc(50%-16px)] rounded-full bg-black/50 p-2 sm:p-3 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white focus:outline-none"
+                    style={{ transform: "translate3d(0, 0, 0)" }}
+                    onClick={() => changePhotoId(index + 1)}
+                  >
+                    <ChevronRightIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                  </button>
+                )}
+              </>
+            )}
+            <div className="pointer-events-auto absolute top-0 right-0 flex items-center gap-2 p-3 sm:p-4 text-white">
+              <a
+                href={currentImage.url}
+                className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white"
+                target="_blank"
+                title={currentImage.type === "video" ? "Open fullsize video" : "Open fullsize photo"}
+                rel="noreferrer"
+              >
+                <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+              </a>
+              <button
+                onClick={() => {
+                  const ext =
+                    currentImage.url.split("?")[0].split(".").pop() ||
+                    (currentImage.type === "video" ? "mp4" : "jpg");
+                  const filename = currentImage.title || `${index}.${ext}`;
+                  downloadPhoto(currentImage.url, filename);
+                }}
+                className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white"
+                title="Download media"
+              >
+                <ArrowDownTrayIcon className="h-5 w-5" />
+              </button>
+              {onEditPhoto && (
+                <button
+                  onClick={() => onEditPhoto(currentImage)}
+                  className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-blue-600/80 hover:text-white"
+                  title="Edit title & date"
+                >
+                  <PencilSquareIcon className="h-5 w-5" />
+                </button>
               )}
-              <div className="pointer-events-auto absolute top-0 right-0 flex items-center gap-2 p-3 sm:p-4 text-white">
-                {currentImage.type !== "video" && (
-                  <div className="flex items-center gap-0.5 rounded-full bg-black/50 p-1 backdrop-blur-lg">
-                    <button
-                      onClick={() => handleZoomOut(0.5)}
-                      disabled={zoomScale <= 1}
-                      className="rounded-full p-1.5 text-white/75 transition hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
-                      title="Zoom out (-)"
-                    >
-                      <MagnifyingGlassMinusIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleZoomIn(0.5)}
-                      disabled={zoomScale >= 4}
-                      className="rounded-full p-1.5 text-white/75 transition hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
-                      title="Zoom in (+)"
-                    >
-                      <MagnifyingGlassPlusIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                )}
-                <a
-                  href={currentImage.url}
-                  className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white"
-                  target="_blank"
-                  title={currentImage.type === "video" ? "Open fullsize video" : "Open fullsize photo"}
-                  rel="noreferrer"
-                >
-                  <ArrowTopRightOnSquareIcon className="h-5 w-5" />
-                </a>
+              {onDeletePhoto && (
                 <button
-                  onClick={() => {
-                    const ext =
-                      currentImage.url.split("?")[0].split(".").pop() ||
-                      (currentImage.type === "video" ? "mp4" : "jpg");
-                    const filename = currentImage.title || `${index}.${ext}`;
-                    downloadPhoto(currentImage.url, filename);
-                  }}
-                  className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white"
-                  title="Download media"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-red-600/80 hover:text-white"
+                  title="Delete"
                 >
-                  <ArrowDownTrayIcon className="h-5 w-5" />
+                  <TrashIcon className="h-5 w-5" />
                 </button>
-                {onEditPhoto && (
-                  <button
-                    onClick={() => onEditPhoto(currentImage)}
-                    className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-blue-600/80 hover:text-white"
-                    title="Edit title & date"
-                  >
-                    <PencilSquareIcon className="h-5 w-5" />
-                  </button>
-                )}
-                {onDeletePhoto && (
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-red-600/80 hover:text-white"
-                    title="Delete"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
-              <div className="pointer-events-auto absolute top-0 left-0 flex items-center gap-2.5 p-3 sm:p-4 text-white">
-                <button
-                  onClick={() => closeModal()}
-                  className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white"
-                >
-                  {navigation ? (
-                    <XMarkIcon className="h-5 w-5" />
-                  ) : (
-                    <ArrowUturnLeftIcon className="h-5 w-5" />
-                  )}
-                </button>
-                {currentImage.title && (
-                  <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-medium text-white/90 backdrop-blur-lg max-w-[200px] xs:max-w-[250px] sm:max-w-md truncate">
-                    {currentImage.title}
-                  </span>
-                )}
-                {navigation && images && images.length > 1 && (
-                  <span className="rounded-full bg-black/50 px-2.5 py-1.5 text-xs font-semibold text-white/80 backdrop-blur-lg">
-                    {index + 1} / {images.length}
-                  </span>
-                )}
-              </div>
-
-              {/* Zoom % indicator centered below image when zoomed */}
-              {currentImage.type !== "video" && zoomScale > 1 && (
-                <div
-                  className={`pointer-events-auto absolute left-1/2 -translate-x-1/2 z-40 flex items-center gap-2.5 rounded-full border border-white/20 bg-black/80 px-3.5 py-1.5 text-xs font-medium text-white shadow-2xl backdrop-blur-xl animate-fade-in ${navigation ? "bottom-24 sm:bottom-28" : "bottom-6 sm:bottom-8"
-                    }`}
-                >
-                  <span className="font-semibold text-white/95">
-                    {Math.round(zoomScale * 100)}%
-                  </span>
-                  <span className="h-3 w-px bg-white/25" />
-                  <button
-                    onClick={handleResetZoom}
-                    className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition"
-                    title="Reset zoom về 100%"
-                  >
-                    Reset
-                  </button>
-                </div>
               )}
             </div>
+            <div className="pointer-events-auto absolute top-0 left-0 flex items-center gap-2.5 p-3 sm:p-4 text-white">
+              <button
+                onClick={() => closeModal()}
+                className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white"
+              >
+                {navigation ? (
+                  <XMarkIcon className="h-5 w-5" />
+                ) : (
+                  <ArrowUturnLeftIcon className="h-5 w-5" />
+                )}
+              </button>
+              {currentImage.title && (
+                <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-medium text-white/90 backdrop-blur-lg max-w-[200px] xs:max-w-[250px] sm:max-w-md truncate">
+                  {currentImage.title}
+                </span>
+              )}
+            </div>
+          </div>
 
           {/* Bottom Nav bar */}
           {navigation && images && images.length > 0 && (

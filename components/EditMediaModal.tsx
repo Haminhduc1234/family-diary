@@ -139,7 +139,7 @@ export default function EditMediaModal({
           static
           open={isOpen}
           onClose={isSaving ? () => {} : onClose}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6"
         >
           {/* Backdrop */}
           <Dialog.Overlay

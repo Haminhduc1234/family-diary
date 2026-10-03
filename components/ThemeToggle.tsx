@@ -26,9 +26,9 @@ export default function ThemeToggle() {
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
       {isDark ? (
-        <SunIcon className="h-5 w-5 text-amber-400 transition-transform duration-300 hover:rotate-45" />
+        <MoonIcon className="h-5 w-5 text-indigo-400 transition-transform duration-300 hover:-rotate-12" />
       ) : (
-        <MoonIcon className="h-5 w-5 text-indigo-500 transition-transform duration-300 hover:-rotate-12" />
+        <SunIcon className="h-5 w-5 text-amber-500 transition-transform duration-300 hover:rotate-45" />
       )}
     </button>
   );

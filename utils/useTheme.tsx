@@ -9,13 +9,13 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: "dark",
-  toggleTheme: () => {},
-  setTheme: () => {},
+  theme: "light",
+  toggleTheme: () => { },
+  setTheme: () => { },
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setCurrentTheme] = useState<Theme>("dark");
+  const [theme, setCurrentTheme] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -26,12 +26,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         setCurrentTheme(savedTheme);
         applyTheme(savedTheme);
       } else {
-        // Default to dark mode for Family Diary
-        setCurrentTheme("dark");
-        applyTheme("dark");
+        // Default to light mode for Family Diary
+        setCurrentTheme("light");
+        applyTheme("light");
       }
     } catch {
-      applyTheme("dark");
+      applyTheme("light");
     }
   }, []);
 
@@ -51,7 +51,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyTheme(newTheme);
     try {
       localStorage.setItem("theme", newTheme);
-    } catch {}
+    } catch { }
   };
 
   const toggleTheme = () => {
@@ -60,7 +60,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <ThemeContext.Provider value={{ theme: mounted ? theme : "dark", toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme: mounted ? theme : "light", toggleTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );
