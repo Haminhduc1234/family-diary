@@ -259,7 +259,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
         <meta property="og:title" content="Family Diary" />
       </Head>
 
-      <main className="mx-auto min-h-screen max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+      <main className="mx-auto min-h-screen max-w-7xl px-3 py-3 sm:px-6 lg:px-8">
         {/* Ambient Atmospheric Background */}
         <div aria-hidden="true" className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
           {/* Light theme ambient auras */}
@@ -288,7 +288,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
         )}
 
         {/* Enhanced Modern Header (Original Style with Refined Colors) */}
-        <header className="relative mb-6 sm:mb-10 pb-6 sm:pb-8">
+        <header className="relative mb-2 sm:mb-10 pb-4 sm:pb-8">
           {/* Subtle Ambient Glows */}
           <div className="pointer-events-none absolute -top-10 left-8 -z-10 h-32 w-64 rounded-full bg-blue-500/10 blur-3xl dark:bg-blue-600/15" />
           <div className="pointer-events-none absolute -top-10 right-8 -z-10 h-32 w-64 rounded-full bg-indigo-500/10 blur-3xl dark:bg-indigo-600/15" />
@@ -309,7 +309,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                   )}
                 </div>
                 <p className="mt-0.5 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-normal whitespace-nowrap truncate max-w-[240px] sm:max-w-none">
-                  ❤️ my family ❤️
+                  my family
                 </p>
               </div>
             </div>
@@ -388,7 +388,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
               return (
                 <section
                   key={group.dateKey}
-                  className="group/section relative pb-10 sm:pb-12 last:pb-2"
+                  className="group/section relative pb-6 sm:pb-12 last:pb-2"
                 >
                   {/* Segment connecting line fading from this node down to the next */}
                   {!isLast ? (
@@ -409,7 +409,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                   </div>
 
                   {/* Sticky Date milestone label */}
-                  <div className="sticky top-2 sm:top-4 z-20 mb-4 sm:mb-5 flex items-center py-1">
+                  <div className="sticky top-2 sm:top-4 z-20 mb-2 sm:mb-5 flex items-center py-1">
                     <div className="inline-flex items-center gap-2 rounded-xl border border-zinc-200/90 bg-white/95 px-3 py-1.5 shadow-md shadow-zinc-900/5 backdrop-blur-xl transition hover:border-blue-400/40 dark:border-white/15 dark:bg-zinc-900/95 dark:shadow-black/50">
                       <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
                         <CalendarDaysIcon className="h-3.5 w-3.5" />
