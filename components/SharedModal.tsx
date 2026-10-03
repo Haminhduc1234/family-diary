@@ -37,9 +37,19 @@ export default function SharedModal({
 
   const currentImage = images ? images[index] : currentPhoto;
 
-  // Zoom & Pan state (default 150% for photos, 100% for videos)
-  const defaultZoom = currentImage?.type === "video" ? 1 : 1.5;
-  const [zoomScale, setZoomScale] = useState(defaultZoom);
+  // Zoom & Pan state:
+  // Mobile (< 640px): default 1 (fit screen width or height, swipeable)
+  // Desktop (>= 640px): default 1.5 (150% zoom for photos)
+  // Videos: always 1
+  const getInitialZoom = () => {
+    if (currentImage?.type === "video") return 1;
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      return 1;
+    }
+    return 1.5;
+  };
+
+  const [zoomScale, setZoomScale] = useState(getInitialZoom);
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const dragStartRef = useRef({ startX: 0, startY: 0, posX: 0, posY: 0 });
@@ -48,7 +58,9 @@ export default function SharedModal({
   const imageContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setZoomScale(currentImage?.type === "video" ? 1 : 1.5);
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
+    const defaultScale = currentImage?.type === "video" || isMobile ? 1 : 1.5;
+    setZoomScale(defaultScale);
     setPanPosition({ x: 0, y: 0 });
   }, [index, currentImage?.type]);
 
