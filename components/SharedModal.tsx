@@ -37,55 +37,50 @@ export default function SharedModal({
 
   const currentImage = images ? images[index] : currentPhoto;
 
-  // Zoom & Pan state:
-  // Mobile (< 640px): default 1 (fit screen width or height, swipeable)
-  // Desktop (>= 640px): default 1.5 (150% zoom for photos)
-  // Videos: always 1
-  const getInitialZoom = () => {
-    if (currentImage?.type === "video") return 1;
-    if (typeof window !== "undefined" && window.innerWidth < 640) {
-      return 1;
-    }
-    return 1.5;
-  };
-
-  const [zoomScale, setZoomScale] = useState(getInitialZoom);
+  // Zoom & Pan state: default 1 (fit screen, 100% natural view)
+  const [zoomScale, setZoomScale] = useState(1);
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [isInteracting, setIsInteracting] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
+
   const dragStartRef = useRef({ startX: 0, startY: 0, posX: 0, posY: 0 });
-  const lastTouchDistanceRef = useRef<number | null>(null);
+  const pinchRef = useRef({
+    startDist: 0,
+    startScale: 1,
+    startPan: { x: 0, y: 0 },
+    startCenter: { x: 0, y: 0 },
+  });
   const lastTapRef = useRef<number>(0);
   const imageContainerRef = useRef<HTMLDivElement>(null);
 
+  // Reset zoom & pan when image changes
   useEffect(() => {
-    const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
-    const defaultScale = currentImage?.type === "video" || isMobile ? 1 : 1.5;
-    setZoomScale(defaultScale);
+    setZoomScale(1);
     setPanPosition({ x: 0, y: 0 });
+    setIsInteracting(false);
+    setIsPanning(false);
   }, [index, currentImage?.type]);
 
   const handleZoomIn = (step = 0.5) => {
-    setZoomScale((prev) => {
-      const next = Math.min(prev + step, 4);
-      if (next === 1) setPanPosition({ x: 0, y: 0 });
-      return next;
-    });
+    setIsInteracting(false);
+    setZoomScale((prev) => Math.min(prev + step, 4));
   };
 
   const handleZoomOut = (step = 0.5) => {
+    setIsInteracting(false);
     setZoomScale((prev) => {
       const next = Math.max(prev - step, 1);
-      if (next === 1) setPanPosition({ x: 0, y: 0 });
+      if (next <= 1.05) {
+        setPanPosition({ x: 0, y: 0 });
+        return 1;
+      }
       return next;
     });
   };
 
   const handleResetZoom = () => {
-    if (zoomScale === 1.5) {
-      setZoomScale(1);
-    } else {
-      setZoomScale(1.5);
-    }
+    setIsInteracting(false);
+    setZoomScale(1);
     setPanPosition({ x: 0, y: 0 });
   };
 
@@ -93,17 +88,19 @@ export default function SharedModal({
     if (currentImage?.type === "video") return;
     e.preventDefault();
     e.stopPropagation();
-    if (zoomScale > 1) {
+    setIsInteracting(false);
+    if (zoomScale > 1.05) {
       setZoomScale(1);
       setPanPosition({ x: 0, y: 0 });
     } else {
-      setZoomScale(1.5);
+      setZoomScale(2);
       setPanPosition({ x: 0, y: 0 });
     }
   };
 
   const handleWheel = (e: React.WheelEvent) => {
     if (currentImage?.type === "video") return;
+    setIsInteracting(false);
     if (e.deltaY < 0) {
       handleZoomIn(0.25);
     } else {
@@ -112,8 +109,9 @@ export default function SharedModal({
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (zoomScale <= 1 || currentImage?.type === "video") return;
+    if (zoomScale <= 1.05 || currentImage?.type === "video") return;
     e.preventDefault();
+    setIsInteracting(true);
     setIsPanning(true);
     dragStartRef.current = {
       startX: e.clientX,
@@ -124,100 +122,164 @@ export default function SharedModal({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isPanning || zoomScale <= 1) return;
+    if (!isPanning || zoomScale <= 1.05) return;
     const dx = e.clientX - dragStartRef.current.startX;
     const dy = e.clientY - dragStartRef.current.startY;
+    const maxPanX = (window.innerWidth * (zoomScale - 1)) / 1.6;
+    const maxPanY = (window.innerHeight * (zoomScale - 1)) / 1.6;
+    const nextX = dragStartRef.current.posX + dx;
+    const nextY = dragStartRef.current.posY + dy;
     setPanPosition({
-      x: dragStartRef.current.posX + dx,
-      y: dragStartRef.current.posY + dy,
+      x: Math.min(Math.max(nextX, -maxPanX), maxPanX),
+      y: Math.min(Math.max(nextY, -maxPanY), maxPanY),
     });
   };
 
   const handleMouseUp = () => {
     setIsPanning(false);
+    setIsInteracting(false);
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (currentImage?.type === "video") return;
     if (e.touches.length === 1) {
       const now = Date.now();
+      const touch = e.touches[0];
       if (now - lastTapRef.current < 300) {
-        if (zoomScale > 1) {
+        // Double tap detected: smooth animated zoom toggle
+        lastTapRef.current = 0;
+        setIsInteracting(false);
+        if (zoomScale > 1.05) {
           setZoomScale(1);
           setPanPosition({ x: 0, y: 0 });
         } else {
-          setZoomScale(1.5);
-          setPanPosition({ x: 0, y: 0 });
+          const midX = window.innerWidth / 2;
+          const midY = window.innerHeight / 2;
+          const targetPanX = (midX - touch.clientX) * 0.7;
+          const targetPanY = (midY - touch.clientY) * 0.7;
+          setZoomScale(2.2);
+          setPanPosition({ x: targetPanX, y: targetPanY });
         }
-        lastTapRef.current = 0;
         return;
       }
       lastTapRef.current = now;
 
-      if (zoomScale > 1) {
+      if (zoomScale > 1.05) {
+        setIsInteracting(true);
         setIsPanning(true);
         dragStartRef.current = {
-          startX: e.touches[0].clientX,
-          startY: e.touches[0].clientY,
+          startX: touch.clientX,
+          startY: touch.clientY,
           posX: panPosition.x,
           posY: panPosition.y,
         };
       }
     } else if (e.touches.length === 2) {
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      lastTouchDistanceRef.current = Math.hypot(
-        touch1.clientX - touch2.clientX,
-        touch1.clientY - touch2.clientY
-      );
+      setIsInteracting(true);
+      setIsPanning(false);
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      const center = {
+        x: (t1.clientX + t2.clientX) / 2,
+        y: (t1.clientY + t2.clientY) / 2,
+      };
+      pinchRef.current = {
+        startDist: dist,
+        startScale: zoomScale,
+        startPan: { ...panPosition },
+        startCenter: center,
+      };
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (currentImage.type === "video") return;
-    if (e.touches.length === 1 && isPanning && zoomScale > 1) {
-      const dx = e.touches[0].clientX - dragStartRef.current.startX;
-      const dy = e.touches[0].clientY - dragStartRef.current.startY;
+    if (currentImage?.type === "video") return;
+    if (e.touches.length === 1 && zoomScale > 1.05 && isInteracting) {
+      const touch = e.touches[0];
+      const dx = touch.clientX - dragStartRef.current.startX;
+      const dy = touch.clientY - dragStartRef.current.startY;
+      const maxPanX = (window.innerWidth * (zoomScale - 1)) / 1.6;
+      const maxPanY = (window.innerHeight * (zoomScale - 1)) / 1.6;
+      const nextX = dragStartRef.current.posX + dx;
+      const nextY = dragStartRef.current.posY + dy;
       setPanPosition({
-        x: dragStartRef.current.posX + dx,
-        y: dragStartRef.current.posY + dy,
+        x: Math.min(Math.max(nextX, -maxPanX), maxPanX),
+        y: Math.min(Math.max(nextY, -maxPanY), maxPanY),
       });
-    } else if (e.touches.length === 2 && lastTouchDistanceRef.current !== null) {
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const dist = Math.hypot(
-        touch1.clientX - touch2.clientX,
-        touch1.clientY - touch2.clientY
-      );
-      const ratio = dist / lastTouchDistanceRef.current;
-      setZoomScale((prev) => {
-        const next = Math.min(Math.max(prev * ratio, 1), 4);
-        if (next === 1) setPanPosition({ x: 0, y: 0 });
-        return next;
+    } else if (e.touches.length === 2 && pinchRef.current.startDist > 0) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      const center = {
+        x: (t1.clientX + t2.clientX) / 2,
+        y: (t1.clientY + t2.clientY) / 2,
+      };
+
+      const scaleRatio = dist / pinchRef.current.startDist;
+      const nextScale = Math.min(Math.max(pinchRef.current.startScale * scaleRatio, 0.85), 4);
+      const dCenterX = center.x - pinchRef.current.startCenter.x;
+      const dCenterY = center.y - pinchRef.current.startCenter.y;
+
+      setZoomScale(nextScale);
+      setPanPosition({
+        x: pinchRef.current.startPan.x + dCenterX,
+        y: pinchRef.current.startPan.y + dCenterY,
       });
-      lastTouchDistanceRef.current = dist;
     }
   };
 
-  const handleTouchEnd = () => {
-    setIsPanning(false);
-    lastTouchDistanceRef.current = null;
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length === 0) {
+      setIsInteracting(false);
+      setIsPanning(false);
+      pinchRef.current.startDist = 0;
+
+      // Snap back if scale was pinched below 1.05
+      if (zoomScale <= 1.05) {
+        setZoomScale(1);
+        setPanPosition({ x: 0, y: 0 });
+      } else {
+        // Clamp pan if dragged beyond screen
+        const maxPanX = (window.innerWidth * (zoomScale - 1)) / 1.8;
+        const maxPanY = (window.innerHeight * (zoomScale - 1)) / 1.8;
+        setPanPosition((prev) => ({
+          x: Math.min(Math.max(prev.x, -maxPanX), maxPanX),
+          y: Math.min(Math.max(prev.y, -maxPanY), maxPanY),
+        }));
+      }
+    } else if (e.touches.length === 1) {
+      // Smooth handoff from 2 fingers to 1 finger pan
+      const touch = e.touches[0];
+      dragStartRef.current = {
+        startX: touch.clientX,
+        startY: touch.clientY,
+        posX: panPosition.x,
+        posY: panPosition.y,
+      };
+      pinchRef.current.startDist = 0;
+      if (zoomScale > 1.05) {
+        setIsPanning(true);
+      }
+    }
   };
 
   const filteredImages = images;
 
   const handlers = useSwipeable({
     onSwipedLeft: () => {
-      if (zoomScale <= 1 && images && index < images.length - 1) {
+      if (zoomScale <= 1.05 && images && index < images.length - 1) {
         changePhotoId(index + 1);
       }
     },
     onSwipedRight: () => {
-      if (zoomScale <= 1 && index > 0) {
+      if (zoomScale <= 1.05 && index > 0) {
         changePhotoId(index - 1);
       }
     },
-    trackMouse: zoomScale <= 1,
+    trackTouch: zoomScale <= 1.05,
+    trackMouse: zoomScale <= 1.05,
+    preventScrollOnSwipe: true,
   });
 
   if (!currentImage) return null;
@@ -289,9 +351,9 @@ export default function SharedModal({
                     onWheel={handleWheel}
                     style={{
                       transform: `translate3d(${panPosition.x}px, ${panPosition.y}px, 0px) scale(${zoomScale})`,
-                      transition: isPanning ? "none" : "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-                      cursor: zoomScale > 1 ? (isPanning ? "grabbing" : "grab") : "zoom-in",
-                      touchAction: zoomScale > 1 ? "none" : "auto",
+                      transition: isInteracting ? "none" : "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+                      cursor: zoomScale > 1.05 ? (isPanning ? "grabbing" : "grab") : "zoom-in",
+                      touchAction: zoomScale > 1.05 ? "none" : "pan-y pinch-zoom",
                     }}
                   >
                     <Image
@@ -308,9 +370,9 @@ export default function SharedModal({
                             : undefined,
                       }}
                       className={`${navigation
-                        ? "max-h-[calc(100dvh-150px)] sm:max-h-[80vh]"
-                        : "max-h-[calc(100dvh-90px)] sm:max-h-[85vh]"
-                        } w-auto max-w-full object-contain pointer-events-none`}
+                        ? "max-h-[calc(100dvh-160px)] sm:max-h-[80vh]"
+                        : "max-h-[calc(100dvh-120px)] sm:max-h-[85vh]"
+                        } w-auto max-w-[calc(100vw-16px)] sm:max-w-full object-contain pointer-events-none select-none`}
                       placeholder={currentImage.blurDataUrl ? "blur" : "empty"}
                       blurDataURL={currentImage.blurDataUrl}
                     />
@@ -321,41 +383,74 @@ export default function SharedModal({
           </div>
         </div>
 
+        {/* Top protective vignette gradient so buttons and titles always pop with high contrast */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/70 via-black/25 to-transparent z-40" />
+
         {/* Buttons + bottom nav bar */}
-        <div className="absolute inset-0 mx-auto flex max-w-7xl items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 mx-auto flex max-w-7xl items-center justify-center pointer-events-none z-50">
           {/* Buttons overlay */}
-          <div className="relative h-full w-full pointer-events-none">
+          <div className="relative h-full w-full pointer-events-none z-50">
             {navigation && images && (
               <>
                 {index > 0 && (
                   <button
-                    className="pointer-events-auto absolute left-3 top-[calc(50%-16px)] rounded-full bg-black/50 p-2 sm:p-3 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white focus:outline-none"
+                    className="pointer-events-auto absolute left-2 sm:left-4 top-[calc(50%-20px)] rounded-full bg-black/60 p-2.5 sm:p-3 text-white/80 shadow-lg backdrop-blur-xl transition hover:bg-black/90 hover:text-white hover:scale-105 active:scale-95 focus:outline-none"
                     style={{ transform: "translate3d(0, 0, 0)" }}
                     onClick={() => changePhotoId(index - 1)}
+                    aria-label="Previous photo"
                   >
                     <ChevronLeftIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </button>
                 )}
                 {index + 1 < images.length && (
                   <button
-                    className="pointer-events-auto absolute right-3 top-[calc(50%-16px)] rounded-full bg-black/50 p-2 sm:p-3 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white focus:outline-none"
+                    className="pointer-events-auto absolute right-2 sm:right-4 top-[calc(50%-20px)] rounded-full bg-black/60 p-2.5 sm:p-3 text-white/80 shadow-lg backdrop-blur-xl transition hover:bg-black/90 hover:text-white hover:scale-105 active:scale-95 focus:outline-none"
                     style={{ transform: "translate3d(0, 0, 0)" }}
                     onClick={() => changePhotoId(index + 1)}
+                    aria-label="Next photo"
                   >
                     <ChevronRightIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </button>
                 )}
               </>
             )}
-            <div className="pointer-events-auto absolute top-0 right-0 flex items-center gap-2 p-3 sm:p-4 text-white">
+
+            {/* Top Right Controls */}
+            <div
+              className="pointer-events-auto absolute top-0 right-0 flex items-center gap-1.5 sm:gap-2 p-2.5 sm:p-4 text-white z-50"
+              style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 12px)" }}
+            >
+              {currentImage.type !== "video" && (
+                <div className="flex items-center gap-0.5 rounded-full bg-black/60 p-1 shadow-lg backdrop-blur-xl border border-white/10">
+                  <button
+                    onClick={() => handleZoomOut(0.5)}
+                    disabled={zoomScale <= 1.05}
+                    className="rounded-full p-1.5 text-white/75 transition hover:bg-white/15 hover:text-white disabled:opacity-25 disabled:hover:bg-transparent"
+                    title="Thu nhỏ (-)"
+                    aria-label="Zoom out"
+                  >
+                    <MagnifyingGlassMinusIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </button>
+                  <button
+                    onClick={() => handleZoomIn(0.5)}
+                    disabled={zoomScale >= 4}
+                    className="rounded-full p-1.5 text-white/75 transition hover:bg-white/15 hover:text-white disabled:opacity-25 disabled:hover:bg-transparent"
+                    title="Phóng to (+)"
+                    aria-label="Zoom in"
+                  >
+                    <MagnifyingGlassPlusIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </button>
+                </div>
+              )}
               <a
                 href={currentImage.url}
-                className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white"
+                className="rounded-full bg-black/60 p-2 text-white/80 shadow-lg backdrop-blur-xl border border-white/10 transition hover:bg-black/90 hover:text-white active:scale-95"
                 target="_blank"
-                title={currentImage.type === "video" ? "Open fullsize video" : "Open fullsize photo"}
+                title={currentImage.type === "video" ? "Mở video gốc" : "Mở ảnh gốc"}
                 rel="noreferrer"
+                aria-label="Open original"
               >
-                <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                <ArrowTopRightOnSquareIcon className="h-4 w-4 sm:h-5 sm:w-5" />
               </a>
               <button
                 onClick={() => {
@@ -365,47 +460,82 @@ export default function SharedModal({
                   const filename = currentImage.title || `${index}.${ext}`;
                   downloadPhoto(currentImage.url, filename);
                 }}
-                className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white"
-                title="Download media"
+                className="rounded-full bg-black/60 p-2 text-white/80 shadow-lg backdrop-blur-xl border border-white/10 transition hover:bg-black/90 hover:text-white active:scale-95"
+                title="Tải về"
+                aria-label="Download"
               >
-                <ArrowDownTrayIcon className="h-5 w-5" />
+                <ArrowDownTrayIcon className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
               {onEditPhoto && (
                 <button
                   onClick={() => onEditPhoto(currentImage)}
-                  className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-blue-600/80 hover:text-white"
-                  title="Edit title & date"
+                  className="rounded-full bg-black/60 p-2 text-white/80 shadow-lg backdrop-blur-xl border border-white/10 transition hover:bg-blue-600 hover:text-white active:scale-95"
+                  title="Chỉnh sửa"
+                  aria-label="Edit"
                 >
-                  <PencilSquareIcon className="h-5 w-5" />
+                  <PencilSquareIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               )}
               {onDeletePhoto && (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-red-600/80 hover:text-white"
-                  title="Delete"
+                  className="rounded-full bg-black/60 p-2 text-white/80 shadow-lg backdrop-blur-xl border border-white/10 transition hover:bg-red-600 hover:text-white active:scale-95"
+                  title="Xoá"
+                  aria-label="Delete"
                 >
-                  <TrashIcon className="h-5 w-5" />
+                  <TrashIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               )}
             </div>
-            <div className="pointer-events-auto absolute top-0 left-0 flex items-center gap-2.5 p-3 sm:p-4 text-white">
+
+            {/* Top Left Controls */}
+            <div
+              className="pointer-events-auto absolute top-0 left-0 flex items-center gap-2 p-2.5 sm:p-4 text-white z-50 max-w-[65%]"
+              style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 12px)" }}
+            >
               <button
                 onClick={() => closeModal()}
-                className="rounded-full bg-black/50 p-2 text-white/75 backdrop-blur-lg transition hover:bg-black/75 hover:text-white"
+                className="rounded-full bg-black/60 p-2 text-white/80 shadow-lg backdrop-blur-xl border border-white/10 transition hover:bg-black/90 hover:text-white active:scale-95"
+                aria-label="Close"
               >
                 {navigation ? (
-                  <XMarkIcon className="h-5 w-5" />
+                  <XMarkIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                 ) : (
-                  <ArrowUturnLeftIcon className="h-5 w-5" />
+                  <ArrowUturnLeftIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                 )}
               </button>
               {currentImage.title && (
-                <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-medium text-white/90 backdrop-blur-lg max-w-[200px] xs:max-w-[250px] sm:max-w-md truncate">
+                <span className="rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium text-white/95 shadow-lg backdrop-blur-xl border border-white/10 truncate">
                   {currentImage.title}
                 </span>
               )}
+              {navigation && images && images.length > 1 && (
+                <span className="hidden xs:inline-block rounded-full bg-black/60 px-2.5 py-1.5 text-[11px] font-semibold text-white/80 shadow-lg backdrop-blur-xl border border-white/10 shrink-0">
+                  {index + 1} / {images.length}
+                </span>
+              )}
             </div>
+
+            {/* Floating Zoom Indicator & Reset when zoomed */}
+            {currentImage.type !== "video" && zoomScale > 1.05 && (
+              <div
+                className={`pointer-events-auto absolute left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 rounded-full border border-white/20 bg-black/85 px-3.5 py-1.5 text-xs font-medium text-white shadow-2xl backdrop-blur-xl animate-fade-in ${
+                  navigation ? "bottom-20 sm:bottom-24" : "bottom-6 sm:bottom-8"
+                }`}
+              >
+                <span className="font-semibold text-white/95">
+                  {Math.round(zoomScale * 100)}%
+                </span>
+                <span className="h-3 w-px bg-white/25" />
+                <button
+                  onClick={handleResetZoom}
+                  className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition active:scale-95"
+                  title="Đặt lại zoom về 100%"
+                >
+                  Đặt lại
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Bottom Nav bar */}

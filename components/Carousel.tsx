@@ -29,9 +29,9 @@ export default function Carousel({
   });
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden">
       <button
-        className="absolute inset-0 z-30 cursor-default bg-black backdrop-blur-2xl"
+        className="absolute inset-0 z-30 cursor-default bg-black/90 backdrop-blur-2xl"
         onClick={closeModal}
       >
         {currentPhoto.type === "video" ? (
