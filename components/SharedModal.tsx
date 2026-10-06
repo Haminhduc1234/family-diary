@@ -420,28 +420,6 @@ export default function SharedModal({
               className="pointer-events-auto absolute top-0 right-0 flex items-center gap-1.5 sm:gap-2 p-2.5 sm:p-4 text-white z-50"
               style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 12px)" }}
             >
-              {currentImage.type !== "video" && (
-                <div className="flex items-center gap-0.5 rounded-full bg-black/60 p-1 shadow-lg backdrop-blur-xl border border-white/10">
-                  <button
-                    onClick={() => handleZoomOut(0.5)}
-                    disabled={zoomScale <= 1.05}
-                    className="rounded-full p-1.5 text-white/75 transition hover:bg-white/15 hover:text-white disabled:opacity-25 disabled:hover:bg-transparent"
-                    title="Thu nhỏ (-)"
-                    aria-label="Zoom out"
-                  >
-                    <MagnifyingGlassMinusIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </button>
-                  <button
-                    onClick={() => handleZoomIn(0.5)}
-                    disabled={zoomScale >= 4}
-                    className="rounded-full p-1.5 text-white/75 transition hover:bg-white/15 hover:text-white disabled:opacity-25 disabled:hover:bg-transparent"
-                    title="Phóng to (+)"
-                    aria-label="Zoom in"
-                  >
-                    <MagnifyingGlassPlusIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </button>
-                </div>
-              )}
               <a
                 href={currentImage.url}
                 className="rounded-full bg-black/60 p-2 text-white/80 shadow-lg backdrop-blur-xl border border-white/10 transition hover:bg-black/90 hover:text-white active:scale-95"
@@ -505,7 +483,7 @@ export default function SharedModal({
                 )}
               </button>
               {currentImage.title && (
-                <span className="rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium text-white/95 shadow-lg backdrop-blur-xl border border-white/10 truncate">
+                <span className="rounded-full bg-black/60 px-3 py-1.5 text-[10px] font-medium text-white/95 shadow-lg backdrop-blur-xl border border-white/10">
                   {currentImage.title}
                 </span>
               )}
@@ -519,9 +497,8 @@ export default function SharedModal({
             {/* Floating Zoom Indicator & Reset when zoomed */}
             {currentImage.type !== "video" && zoomScale > 1.05 && (
               <div
-                className={`pointer-events-auto absolute left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 rounded-full border border-white/20 bg-black/85 px-3.5 py-1.5 text-xs font-medium text-white shadow-2xl backdrop-blur-xl animate-fade-in ${
-                  navigation ? "bottom-20 sm:bottom-24" : "bottom-6 sm:bottom-8"
-                }`}
+                className={`pointer-events-auto absolute left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 rounded-full border border-white/20 bg-black/85 px-3.5 py-1.5 text-xs font-medium text-white shadow-2xl backdrop-blur-xl animate-fade-in ${navigation ? "bottom-20 sm:bottom-24" : "bottom-6 sm:bottom-8"
+                  }`}
               >
                 <span className="font-semibold text-white/95">
                   {Math.round(zoomScale * 100)}%
