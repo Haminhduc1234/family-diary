@@ -55,13 +55,13 @@ export default function SplashScreen({
       } else if (currentPercent < 98) {
         setStageText("Chuẩn bị hoàn tất...");
       } else {
-        setStageText("Chào mừng!");
+        setStageText("Chào mừng bạn!");
       }
 
       if (elapsed >= minDuration) {
         clearInterval(timer);
         setProgress(100);
-        setStageText("Chào mừng!");
+        setStageText("Chào mừng bạn!");
         // Hold at 100% for 220ms for sweet visual closure
         setTimeout(() => {
           dismiss();
