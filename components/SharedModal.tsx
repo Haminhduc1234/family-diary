@@ -4,6 +4,7 @@ import {
   ArrowUturnLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  EyeIcon,
   MagnifyingGlassMinusIcon,
   MagnifyingGlassPlusIcon,
   PencilSquareIcon,
@@ -17,6 +18,7 @@ import { useSwipeable } from "react-swipeable";
 import { variants } from "../utils/animationVariants";
 import downloadPhoto from "../utils/downloadPhoto";
 import { range } from "../utils/range";
+import { formatViews } from "../utils/formatViews";
 import type { ImageProps, SharedModalProps } from "../utils/types";
 import Twitter from "./Icons/Twitter";
 import DeleteConfirmModal from "./DeleteConfirmModal";
@@ -31,11 +33,46 @@ export default function SharedModal({
   direction,
   onDeletePhoto,
   onEditPhoto,
+  onViewIncrement,
 }: SharedModalProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const currentImage = images ? images[index] : currentPhoto;
+
+  // View count increment with 1.5s delay and sessionStorage deduplication
+  useEffect(() => {
+    if (!currentImage?.rawName) return;
+
+    const storageKey = "viewed_photos_session";
+    const targetKey = currentImage.rawName;
+
+    const timer = setTimeout(() => {
+      try {
+        const viewed: string[] = JSON.parse(
+          sessionStorage.getItem(storageKey) || "[]"
+        );
+        if (!viewed.includes(targetKey)) {
+          viewed.push(targetKey);
+          sessionStorage.setItem(storageKey, JSON.stringify(viewed));
+
+          fetch("/api/view", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ storage_path: targetKey }),
+          }).catch(() => {});
+
+          if (onViewIncrement) {
+            onViewIncrement(targetKey);
+          }
+        }
+      } catch {
+        // Safe fallback
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [currentImage?.rawName, onViewIncrement]);
 
   // Zoom & Pan state: default 1 (fit screen, 100% natural view)
   const [zoomScale, setZoomScale] = useState(1);
@@ -483,10 +520,17 @@ export default function SharedModal({
                 )}
               </button>
               {currentImage.title && (
-                <span className="rounded-full bg-black/60 px-3 py-1.5 text-[10px] font-medium text-white/95 shadow-lg backdrop-blur-xl border border-white/10">
+                <span className="rounded-full bg-black/60 px-3 py-1.5 text-[10px] font-medium text-white/95 shadow-lg backdrop-blur-xl border border-white/10 truncate max-w-[150px] sm:max-w-[220px]">
                   {currentImage.title}
                 </span>
               )}
+              <span
+                className="rounded-full bg-black/60 px-2.5 sm:px-3 py-1.5 text-[10px] sm:text-[11px] font-medium text-white/90 shadow-lg backdrop-blur-xl border border-white/10 shrink-0 inline-flex items-center gap-1.5"
+                title={`${currentImage.views || 0} lượt xem`}
+              >
+                <EyeIcon className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                <span>{formatViews(currentImage.views)}</span>
+              </span>
               {navigation && images && images.length > 1 && (
                 <span className="hidden xs:inline-block rounded-full bg-black/60 px-2.5 py-1.5 text-[11px] font-semibold text-white/80 shadow-lg backdrop-blur-xl border border-white/10 shrink-0">
                   {index + 1} / {images.length}

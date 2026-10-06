@@ -11,11 +11,13 @@ export default function Modal({
   onClose,
   onDeletePhoto,
   onEditPhoto,
+  onViewIncrement,
 }: {
   images: ImageProps[];
   onClose?: () => void;
   onDeletePhoto?: (id: number, filename: string) => Promise<void>;
   onEditPhoto?: (item: ImageProps) => void;
+  onViewIncrement?: (storagePath: string) => void;
 }) {
   let overlayRef = useRef();
   const router = useRouter();
@@ -100,6 +102,7 @@ export default function Modal({
         navigation={true}
         onDeletePhoto={onDeletePhoto}
         onEditPhoto={onEditPhoto}
+        onViewIncrement={onViewIncrement}
       />
     </Dialog>
   );

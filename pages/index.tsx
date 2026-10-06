@@ -9,6 +9,7 @@ import {
   ArrowUpIcon,
   ArrowUpTrayIcon,
   CalendarDaysIcon,
+  EyeIcon,
   FilmIcon,
   GlobeAltIcon,
   LockClosedIcon,
@@ -24,6 +25,7 @@ import AdminLoginModal from "../components/AdminLoginModal";
 import EditMediaModal from "../components/EditMediaModal";
 import ThemeToggle from "../components/ThemeToggle";
 import getResults from "../utils/cachedImages";
+import { formatViews } from "../utils/formatViews";
 import type { ImageProps } from "../utils/types";
 import { useLastViewedPhoto } from "../utils/useLastViewedPhoto";
 import { supabase } from "../utils/supabase";
@@ -185,6 +187,16 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
     }
   };
 
+  const handleViewIncrement = (storagePath: string) => {
+    setMediaList((prev) =>
+      prev.map((item) =>
+        item.rawName === storagePath
+          ? { ...item, views: (item.views || 0) + 1 }
+          : item
+      )
+    );
+  };
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -284,6 +296,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
             }}
             onDeletePhoto={user ? handleDeleteFromModal : undefined}
             onEditPhoto={user ? (item) => setEditingItem(item) : undefined}
+            onViewIncrement={handleViewIncrement}
           />
         )}
 
@@ -428,7 +441,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                         : "grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6"
                     }
                   >
-                    {group.items.map(({ id, url, blurDataUrl, type, title, rawName, formattedDate, width, height, createdAt }, itemIndex) => {
+                    {group.items.map(({ id, url, blurDataUrl, type, title, rawName, formattedDate, width, height, createdAt, views }, itemIndex) => {
                       const isAboveTheFold = groupIndex === 0 && itemIndex < 4;
                       return (
                         <div
@@ -446,7 +459,7 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  setEditingItem({ id, url, blurDataUrl, type, title, rawName, width, height, createdAt, formattedDate });
+                                  setEditingItem({ id, url, blurDataUrl, type, title, rawName, width, height, createdAt, formattedDate, views });
                                 }}
                                 className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-black/70 text-white/80 backdrop-blur-md transition hover:bg-blue-600 hover:text-white"
                                 title="Edit title & date"
@@ -551,14 +564,23 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                               />
                             )}
 
-                            {/* Title Overlay for masonry */}
-                            {viewMode !== "large" && (Boolean(title && title.trim()) || formattedDate) && (
-                              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2.5 sm:px-3 pt-8 pb-2 sm:pt-10 sm:pb-2.5 flex flex-col justify-end">
-                                {title && title.trim() ? (
-                                  <span className="text-[10px] sm:text-[12px] text-white/80 font-medium block truncate mt-0.5">
-                                    {title}
-                                  </span>
-                                ) : null}
+                            {/* Title & View Count Overlay for masonry */}
+                            {viewMode !== "large" && (
+                              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-2.5 sm:px-3 pt-8 pb-2 sm:pt-9 sm:pb-2.5 flex items-end justify-between gap-1.5">
+                                <div className="min-w-0">
+                                  {title && title.trim() ? (
+                                    <span className="text-[10px] sm:text-[12px] text-white/90 font-medium block truncate">
+                                      {title}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div
+                                  className="shrink-0 flex items-center gap-1 text-[10px] text-white/80 font-medium bg-black/40 px-1.5 py-0.5 rounded-full backdrop-blur-xs"
+                                  title={`${views || 0} lượt xem`}
+                                >
+                                  <EyeIcon className="h-3 w-3 text-white/70" />
+                                  <span>{formatViews(views)}</span>
+                                </div>
                               </div>
                             )}
                           </Link>
@@ -566,10 +588,17 @@ const Home: NextPage = ({ images = [] }: { images: ImageProps[] }) => {
                           {/* Large mode footer info bar */}
                           {viewMode === "large" && (
                             <div className="p-3.5 sm:p-4 bg-white dark:bg-zinc-900/90 border-t border-zinc-100 dark:border-white/5 flex items-center justify-between gap-3">
-                              <div className="min-w-0">
+                              <div className="min-w-0 flex items-center gap-2.5">
                                 <h4 className="text-sm font-semibold text-zinc-900 dark:text-white truncate">
                                   {title && title.trim() ? title : "Khoảnh khắc gia đình"}
                                 </h4>
+                                <span
+                                  className="inline-flex items-center gap-1 rounded-md bg-zinc-100 dark:bg-white/5 px-2 py-0.5 text-xs text-zinc-500 dark:text-zinc-400 shrink-0 font-medium"
+                                  title={`${views || 0} lượt xem`}
+                                >
+                                  <EyeIcon className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500" />
+                                  <span>{formatViews(views)}</span>
+                                </span>
                               </div>
                               <Link
                                 href={`/?photoId=${id}`}

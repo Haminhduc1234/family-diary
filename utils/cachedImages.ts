@@ -12,6 +12,15 @@ export function clearMediaCache() {
   lastFetchTime = 0;
 }
 
+export function incrementCachedView(storagePath: string) {
+  if (cached) {
+    const item = cached.find((img) => img.rawName === storagePath);
+    if (item) {
+      item.views = (item.views || 0) + 1;
+    }
+  }
+}
+
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "avif", "gif"]);
 const VIDEO_EXTENSIONS = new Set(["mp4", "webm", "mov", "m4v", "ogg"]);
 
@@ -235,6 +244,7 @@ export default async function getResults(forceRefresh: boolean = false): Promise
               rawName: row.storage_path,
               createdAt: row.created_at || dateObj.toISOString(),
               formattedDate,
+              views: typeof row.views === "number" ? row.views : 0,
             };
           })
         );
@@ -284,6 +294,7 @@ export default async function getResults(forceRefresh: boolean = false): Promise
             rawName: file.name,
             createdAt: file.created_at || dateObj.toISOString(),
             formattedDate,
+            views: 0,
           };
         }
 
@@ -297,6 +308,7 @@ export default async function getResults(forceRefresh: boolean = false): Promise
           rawName: file.name,
           createdAt: file.created_at || dateObj.toISOString(),
           formattedDate,
+          views: 0,
         };
       })
     );

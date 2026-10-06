@@ -12,6 +12,7 @@ export interface ImageProps {
   rawName?: string;
   createdAt?: string;
   formattedDate?: string;
+  views?: number;
 }
 
 export interface SharedModalProps {
@@ -24,4 +25,5 @@ export interface SharedModalProps {
   direction?: number;
   onDeletePhoto?: (id: number, filename: string) => Promise<void>;
   onEditPhoto?: (item: ImageProps) => void;
+  onViewIncrement?: (storagePath: string) => void;
 }
