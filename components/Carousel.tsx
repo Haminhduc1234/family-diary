@@ -8,9 +8,11 @@ import SharedModal from "./SharedModal";
 export default function Carousel({
   index,
   currentPhoto,
+  images,
 }: {
   index: number;
   currentPhoto: ImageProps;
+  images?: ImageProps[];
 }) {
   const router = useRouter();
   const [, setLastViewedPhoto] = useLastViewedPhoto();
@@ -21,7 +23,9 @@ export default function Carousel({
   }
 
   function changePhotoId(newVal: number) {
-    return newVal;
+    if (images && images[newVal]) {
+      router.push(`/p/${images[newVal].id}`, undefined, { shallow: true });
+    }
   }
 
   useKeypress("Escape", () => {
@@ -50,8 +54,9 @@ export default function Carousel({
         index={index}
         changePhotoId={changePhotoId}
         currentPhoto={currentPhoto}
+        images={images}
         closeModal={closeModal}
-        navigation={false}
+        navigation={Boolean(images && images.length > 1)}
       />
     </div>
   );

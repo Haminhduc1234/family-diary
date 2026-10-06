@@ -5,18 +5,20 @@ import Carousel from "../../components/Carousel";
 import getResults from "../../utils/cachedImages";
 import type { ImageProps } from "../../utils/types";
 
-const PhotoPage: NextPage<{ currentPhoto: ImageProps }> = ({
+const PhotoPage: NextPage<{ currentPhoto: ImageProps; images?: ImageProps[] }> = ({
   currentPhoto,
+  images = [],
 }) => {
   const router = useRouter();
   const { photoId } = router.query;
-  const index = Number(photoId);
+  const index = images.findIndex((img) => img.id === Number(photoId));
+  const activeIndex = index >= 0 ? index : Number(photoId);
 
   if (!currentPhoto) {
     return null;
   }
 
-  const title = currentPhoto.title || `Memory #${index}`;
+  const title = currentPhoto.title || `Memory #${activeIndex}`;
 
   return (
     <>
@@ -30,7 +32,7 @@ const PhotoPage: NextPage<{ currentPhoto: ImageProps }> = ({
         )}
       </Head>
       <main className="mx-auto max-w-[1960px] p-4">
-        <Carousel currentPhoto={currentPhoto} index={index} />
+        <Carousel currentPhoto={currentPhoto} index={activeIndex} images={images} />
       </main>
     </>
   );
@@ -55,6 +57,6 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   }
 
   return {
-    props: { currentPhoto },
+    props: { currentPhoto, images },
   };
 };
