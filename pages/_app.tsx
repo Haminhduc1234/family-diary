@@ -2,6 +2,7 @@ import type { AppProps } from "next/app";
 import { useEffect } from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { ThemeProvider } from "../utils/useTheme";
+import SplashScreen from "../components/SplashScreen";
 import "../styles/index.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -39,6 +40,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
         }
       `}</style>
       <div className={`${jakarta.variable} font-sans min-h-screen bg-slate-50/70 text-zinc-900 dark:bg-[#090a0f] dark:text-zinc-100 antialiased selection:bg-blue-600 selection:text-white transition-colors duration-200`}>
+        <SplashScreen />
         <Component {...pageProps} />
       </div>
     </ThemeProvider>
