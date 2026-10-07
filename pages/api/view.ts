@@ -24,13 +24,13 @@ export default async function handler(
   }
 
   try {
-    // 1. Try RPC first if user created the function
-    const { error: rpcError } = await serverClient.rpc("increment_media_view", {
+    // 1. Try RPC first (Bypasses RLS with SECURITY DEFINER and executes atomically)
+    const { data: rpcData, error: rpcError } = await serverClient.rpc("increment_media_view", {
       target_path: storage_path,
     });
 
-    if (!rpcError) {
-      return res.status(200).json({ success: true, method: "rpc" });
+    if (!rpcError && typeof rpcData === "number") {
+      return res.status(200).json({ success: true, views: rpcData, method: "rpc" });
     }
 
     // 2. Fallback: Select then Update
@@ -41,24 +41,32 @@ export default async function handler(
       .maybeSingle();
 
     if (selectError) {
-      // Column 'views' might not exist in Supabase yet
-      return res.status(200).json({
-        success: true,
-        notice: selectError.message,
+      console.error("[api/view] selectError:", selectError.message);
+      return res.status(400).json({
+        success: false,
+        error: selectError.message,
+        hint: "Chưa có cột 'views' trong bảng media trên Supabase. Vui lòng chạy lệnh SQL trong SQL Editor.",
       });
     }
 
     if (row) {
       const currentViews = typeof row.views === "number" ? row.views : 0;
-      const { error: updateError } = await serverClient
+      const { data: updatedRows, error: updateError } = await serverClient
         .from("media")
         .update({ views: currentViews + 1 })
-        .eq("id", row.id);
+        .eq("id", row.id)
+        .select();
 
-      if (updateError) {
-        return res.status(200).json({
-          success: true,
-          notice: updateError.message,
+      if (updateError || !updatedRows || updatedRows.length === 0) {
+        console.error(
+          "[api/view] updateError:",
+          updateError?.message || "0 rows updated. Check RLS policies or SUPABASE_SERVICE_ROLE_KEY."
+        );
+        return res.status(400).json({
+          success: false,
+          error:
+            updateError?.message ||
+            "Không thể cập nhật lượt xem (RLS chặn hoặc thiếu quyền update). Hãy dùng hàm RPC increment_media_view.",
         });
       }
 
@@ -68,9 +76,9 @@ export default async function handler(
       });
     }
 
-    return res.status(200).json({ success: true, notFoundInDb: true });
+    return res.status(404).json({ error: "Media not found in database" });
   } catch (error: any) {
-    console.error("View increment error:", error);
+    console.error("[api/view] View increment error:", error);
     return res.status(500).json({ error: error.message || "Failed to record view" });
   }
 }
